@@ -1,0 +1,7 @@
+<resources>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="app_name">spotify</string>
+    <string name="listen_now">listen now</string>
+    <string name="me">me</string>
+    <string name="discover">discover</string>
+</resources>

@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="viewModel"
+            type="com.niki.app.SpotifyRemote" />
+    </data>
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/background">
+
+        <com.zephyr.base.ui.FragmentHostView
+            android:id="@+id/hostView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_gravity="top"
+            android:translationZ="0dp" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/player"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/bar"
+            android:translationZ="1dp"
+            app:behavior_hideable="false"
+            app:layout_behavior="@string/bottom_sheet_behavior">
+
+            <View
+                android:id="@+id/shade"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:background="@color/bar"
+                app:layout_constraintHeight_percent="0.3"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/miniPlayer"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <com.niki.app.ui.ScrollTextView
+                    android:id="@+id/miniSongName"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:ellipsize="marquee"
+                    android:gravity="start|center_vertical"
+                    android:maxLines="1"
+                    android:text="@{viewModel.trackName + ` · ` + viewModel.artistName}"
+                    android:textColor="@color/contrast"
+                    android:textSize="18sp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/miniPlay"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.7" />
+
+                <com.zephyr.base.ui.RippleButton
+                    android:id="@+id/miniPlay"
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:clickable="true"
+                    android:onClick="@{() -> viewModel.switchState()}"
+                    android:padding="4dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_play"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/miniNext"
+                    app:layout_constraintStart_toEndOf="@id/miniSongName"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.135"
+                    app:tint="@color/contrast" />
+
+                <com.zephyr.base.ui.RippleButton
+                    android:id="@+id/miniNext"
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:clickable="true"
+                    android:onClick="@{() -> viewModel.next()}"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_next"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/miniPlay"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.135"
+                    app:tint="@color/contrast" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <ImageView
+                android:id="@+id/cover"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:scaleType="fitCenter"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.niki.app.ui.ScrollTextView
+                android:id="@+id/songName"
+                android:layout_width="0dp"
+                android:layout_height="33dp"
+                android:layout_marginHorizontal="5dp"
+                android:ellipsize="marquee"
+                android:gravity="start|center_vertical"
+                android:maxLines="1"
+                android:text="@{viewModel.trackName}"
+                android:textColor="@color/white_transparent"
+                android:textSize="23sp"
+                app:layout_constraintEnd_toEndOf="@id/cover"
+                app:layout_constraintHeight_percent="0.04"
+                app:layout_constraintStart_toStartOf="@id/cover"
+                app:layout_constraintTop_toBottomOf="@id/cover" />
+
+            <com.niki.app.ui.ScrollTextView
+                android:id="@+id/singerName"
+                android:layout_width="0dp"
+                android:layout_height="33dp"
+                android:layout_marginHorizontal="5dp"
+                android:ellipsize="marquee"
+                android:gravity="start|center_vertical"
+                android:maxLines="1"
+                android:text="@{viewModel.artistName}"
+                android:textColor="#50ffffff"
+                android:textSize="23sp"
+                app:layout_constraintEnd_toEndOf="@id/cover"
+                app:layout_constraintHeight_percent="0.04"
+                app:layout_constraintStart_toStartOf="@id/cover"
+                app:layout_constraintTop_toBottomOf="@id/songName" />
+
+            <com.niki.app.ui.LoadingSeekbar
+                android:id="@+id/seekbar"
+                android:layout_width="10dp"
+                android:layout_height="0dp"
+                android:background="@null"
+                android:progressDrawable="@drawable/seek_bar"
+                android:thumb="@android:color/transparent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHeight_percent="0.02"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/singerName" />
+
+            <TextView
+                android:id="@+id/current"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:gravity="start"
+                android:maxLines="1"
+                android:textColor="#50ffffff"
+                android:textSize="14sp"
+                app:layout_constraintHeight_percent="0.03"
+                app:layout_constraintStart_toStartOf="@id/seekbar"
+                app:layout_constraintTop_toBottomOf="@id/seekbar" />
+
+            <TextView
+                android:id="@+id/total"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:ellipsize="marquee"
+                android:gravity="end"
+                android:maxLines="1"
+                android:textColor="#50ffffff"
+                android:textSize="14sp"
+                app:layout_constraintEnd_toEndOf="@id/seekbar"
+                app:layout_constraintHeight_percent="0.03"
+                app:layout_constraintTop_toBottomOf="@id/seekbar" />
+
+            <com.zephyr.base.ui.RippleButton
+                android:id="@+id/previous"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:onClick="@{() -> viewModel.previous()}"
+                android:padding="5dp"
+                android:src="@drawable/ic_previous"
+                app:layout_constraintBottom_toBottomOf="@id/play"
+                app:layout_constraintEnd_toStartOf="@id/play"
+                app:layout_constraintStart_toStartOf="@id/current"
+                app:layout_constraintTop_toTopOf="@id/play"
+                app:tint="@color/white_transparent" />
+
+            <com.zephyr.base.ui.RippleButton
+                android:id="@+id/play"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:onClick="@{() -> viewModel.switchState()}"
+                android:padding="5dp"
+                android:src="@drawable/ic_play"
+                app:layout_constraintEnd_toStartOf="@id/next"
+                app:layout_constraintStart_toEndOf="@id/previous"
+                app:layout_constraintTop_toBottomOf="@id/seekbar"
+                app:tint="@color/white_transparent" />
+
+            <com.zephyr.base.ui.RippleButton
+                android:id="@+id/next"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:onClick="@{() -> viewModel.next()}"
+                android:padding="5dp"
+                android:src="@drawable/ic_next"
+                app:layout_constraintBottom_toBottomOf="@id/play"
+                app:layout_constraintEnd_toEndOf="@id/total"
+                app:layout_constraintStart_toEndOf="@id/play"
+                app:layout_constraintTop_toTopOf="@id/play"
+                app:tint="@color/white_transparent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <View
+            android:id="@+id/line"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_gravity="bottom"
+            android:background="@color/line"
+            android:translationZ="2dp" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/floatButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|bottom"
+            android:src="@drawable/spotify_icon_line"
+            android:visibility="invisible" />
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNavigation"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_gravity="bottom"
+            android:background="@color/bar"
+            android:translationZ="2dp"
+            app:itemActiveIndicatorStyle="@null"
+            app:itemIconTint="@color/bottom_nav_color"
+            app:itemRippleColor="@null"
+            app:itemTextColor="@color/bottom_nav_color"
+            app:labelVisibilityMode="selected"
+            app:menu="@menu/menu_main" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+</layout>

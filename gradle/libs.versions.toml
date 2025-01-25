@@ -1,0 +1,59 @@
+[versions]
+agp = "8.5.1"
+auth = "1.2.5"
+browser = "1.5.0"
+gsonVersion = "2.11.0"
+kotlin = "1.9.0"
+junit = "4.13.2"
+appcompat = "1.7.0"
+material = "1.12.0"
+activity = "1.9.1"
+glideVersion = "4.16.0"
+constraintlayout = "2.1.4"
+zephyr = "2.3.0"
+runner = "1.0.2"
+espressoCoreVersion = "3.0.2"
+lifecycleRuntimeKtx = "2.8.4"
+retrofit = "2.11.0"
+coreKtx = "1.13.1"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+datastoreCoreAndroid = "1.1.1"
+glideTransformations = "4.3.0"
+paletteKtx = "1.0.0"
+
+[libraries]
+github-glide = { module = "com.github.bumptech.glide:glide", version.ref = "glideVersion" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
+auth = { module = "com.spotify.android:auth", version.ref = "auth" }
+google-gson = { module = "com.google.code.gson:gson", version.ref = "gsonVersion" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+zephyr-base = { module = "com.github.p1ay1s.Zephyr:base", version.ref = "zephyr" }
+zephyr-util = { module = "com.github.p1ay1s.Zephyr:util", version.ref = "zephyr" }
+zephyr-vbclass = { module = "com.github.p1ay1s.Zephyr:vbclass", version.ref = "zephyr" }
+runner = { group = "com.android.support.test", name = "runner", version.ref = "runner" }
+espresso-core = { group = "com.android.support.test.espresso", name = "espresso-core", version.ref = "espressoCoreVersion" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-datastore = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastoreCoreAndroid" }
+glide-transformations = { group = "jp.wasabeef", name = "glide-transformations", version.ref = "glideTransformations" }
+androidx-palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = "paletteKtx" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+
