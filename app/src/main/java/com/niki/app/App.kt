@@ -1,7 +1,6 @@
 package com.niki.app
 
 import android.app.Application
-import com.google.android.material.color.DynamicColors
 import com.spotify.android.appremote.api.ConnectionParams
 import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.SpotifyAppRemote
@@ -10,14 +9,6 @@ import com.zephyr.base.appContext
 import com.zephyr.base.log.Logger
 import com.zephyr.base.log.VERBOSE
 import com.zephyr.base.log.logE
-
-const val CLIENT_ID = "729ad520a3964dc3b020c0db30bfccb7"
-const val CLIENT_SECRET = "31a0f20ea9bd42418b973a83b83a2c7f"
-const val REDIRECT_URI = "https://open.spotify.com/"
-
-var appAccess = ""
-var appRefresh = ""
-var appLastSet = 0L
 
 class App : Application() {
 

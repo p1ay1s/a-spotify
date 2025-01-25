@@ -3,6 +3,8 @@ package com.niki.app
 import android.annotation.SuppressLint
 import android.graphics.drawable.TransitionDrawable
 import android.os.Build
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.View
 import android.widget.SeekBar
 import androidx.activity.enableEdgeToEdge
@@ -16,13 +18,13 @@ import com.niki.app.databinding.ActivityMainBinding
 import com.niki.app.listen_now.ListenNowFragment
 import com.niki.util.Point
 import com.niki.util.getIntersectionPoint
-import com.niki.util.getScreenHeight
-import com.niki.util.getScreenWidth
 import com.niki.util.loadRadiusBitmap
 import com.niki.util.toBlurDrawable
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
+import com.zephyr.base.extension.getScreenHeight
+import com.zephyr.base.extension.getScreenWidth
 import com.zephyr.base.extension.hideStatusBar
 import com.zephyr.base.extension.setMargins
 import com.zephyr.base.extension.setSize
@@ -33,6 +35,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+var vibrator: Vibrator? = null
 
 @SuppressLint("SetTextI18n")
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
@@ -50,6 +54,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         private const val MINI_COVER_SIZE = 0.8F // 占 mini player 高度的百分比
 
         private const val COVER_SCALE_K = -1.3F
+
+        const val TWO_PRESSES_TO_EXIT_APP_TIME = 3000
     }
 
     private val playerBehavior
@@ -78,6 +84,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     private var notedProgress = 0
 
+    private var lastBackPressedTimeSet = -1L
+
     // spotify app 授权的 activity result launcher
     private val launcher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -101,6 +109,11 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             useFullScreen()
 
+        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
+        }
         setSizes()
 
         viewModel = SpotifyRemote
@@ -122,6 +135,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         hostView.apply {
             fragmentManager = supportFragmentManager
+            addHost(R.id.index_me)
             addHost(
                 R.id.index_listen_now,
                 Fragments.LISTEN_NOW,
@@ -190,13 +204,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     private fun setSizes() {
         binding.run {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                _parentHeight = getScreenHeight()
-                _parentWidth = getScreenWidth()
-            } else {
-                _parentHeight = root.resources.displayMetrics.heightPixels
-                _parentWidth = root.resources.displayMetrics.widthPixels
-            }
+            _parentHeight = getScreenHeight()
+            _parentWidth = getScreenWidth()
 
             bottomNavHeight = (_parentHeight * BOTTOM_NAV_WEIGHT).toInt()
             miniPlayerHeight = (_parentHeight * MINI_PLAYER_WEIGHT).toInt()
@@ -206,14 +215,15 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             playerBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
             playerBehavior.peekHeight = bottomNavHeight + miniPlayerHeight
 
-            hostView.setSize(height = _parentHeight - bottomNavHeight)
+            hostView.setSize(
+                height = _parentHeight - bottomNavHeight - miniPlayerHeight
+            )
             bottomNavigation.setSize(height = bottomNavHeight)
 
             cover.setSize((0.7 * _parentWidth).toInt())
 
             cover.setMargins(top = (0.17 * _parentHeight).toInt())
             songName.setMargins(top = (0.02 * _parentHeight).toInt())
-//            singerName.setMargins(top = (0.001 * _parentHeight).toInt())
             seekbar.setMargins(top = (0.02 * _parentHeight).toInt())
             play.setMargins(top = (0.1 * _parentHeight).toInt())
             line.setMargins(bottom = bottomNavHeight)
@@ -286,9 +296,6 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             binding.apply {
                 when (newState) {
                     BottomSheetBehavior.STATE_COLLAPSED -> {
-                        hostView.setSize(
-                            height = _parentHeight - bottomNavHeight - miniPlayerHeight
-                        )
                         adjustCover(0.0F)
                         miniPlayer.visibility = View.VISIBLE
                     }
@@ -406,5 +413,37 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     private fun checkAndResetCover() {
         if (playerBehavior.state == BottomSheetBehavior.STATE_COLLAPSED)
             adjustCover(0F) // 让图片立即复位
+    }
+
+    @SuppressLint("MissingSuperCall")
+    override fun onBackPressed() {
+        val pair = binding.hostView.getActiveHost()?.peek()
+
+        if (playerBehavior.state == BottomSheetBehavior.STATE_EXPANDED) {
+            playerBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+            return
+        }
+
+        if (pair != null)
+            when (pair.first) {
+                Fragments.LISTEN_NOW -> twoClicksToExit()
+
+                else -> binding.hostView.getActiveHost()?.popFragment(
+                    R.anim.fade_in,
+                    R.anim.right_exit
+                )
+            }
+    }
+
+    // 双击退出应用的逻辑
+    private fun twoClicksToExit() {
+        val time = System.currentTimeMillis() - lastBackPressedTimeSet
+
+        if (time <= TWO_PRESSES_TO_EXIT_APP_TIME) {
+            finishAffinity()
+        } else {
+            lastBackPressedTimeSet = System.currentTimeMillis()
+            toast("再次点击退出")
+        }
     }
 }

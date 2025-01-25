@@ -10,6 +10,7 @@ import com.spotify.protocol.types.ListItem
 import com.spotify.protocol.types.ListItems
 import com.spotify.protocol.types.PlayerState
 import com.zephyr.base.appContext
+import com.zephyr.base.extension.toast
 import com.zephyr.base.log.logE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * 主要负责向 spotify 获取数据
+ */
 object SpotifyRemote {
     val remote: SpotifyAppRemote?
         get() {
@@ -108,9 +112,32 @@ object SpotifyRemote {
         }
     }
 
+    fun loadLowImage(uri: String, callback: (Bitmap) -> Unit) {
+        val fetchedBitmap = LowBitmapCachePool.fetch(uri)
+        if (fetchedBitmap != null) {
+            logE(TAG, "$uri: 获取了缓存图片")
+            callback(fetchedBitmap)
+            return
+        }
+        remote?.imagesApi?.getImage(ImageUri(uri), Image.Dimension.X_SMALL)
+            ?.setResultCallback {
+                LowBitmapCachePool.cache(uri, it)
+                callback(it)
+            }
+    }
+
     fun loadImage(uri: String, callback: (Bitmap) -> Unit) {
+        val fetchedBitmap = BitmapCachePool.fetch(uri)
+        if (fetchedBitmap != null) {
+            logE(TAG, "$uri: 获取了缓存图片")
+            callback(fetchedBitmap)
+            return
+        }
         remote?.imagesApi?.getImage(ImageUri(uri), Image.Dimension.LARGE)
-            ?.setResultCallback { callback(it) }
+            ?.setResultCallback {
+                BitmapCachePool.cache(uri, it)
+                callback(it)
+            }
     }
 
     private fun refreshInfos() {
@@ -188,6 +215,9 @@ object SpotifyRemote {
         }
     }
 
+    /**
+     * 获取 List 对象, 提供给 adapter
+     */
     fun getItemListNonNull(callback: (List<Item>) -> Unit) {
         getListItemList { filterListItem(it) { items -> callback(items) } }
     }
@@ -197,24 +227,34 @@ object SpotifyRemote {
         remote?.contentApi?.playContentItem(item)
     }
 
+    fun playPlaylistWithIndex(item: ListItem, index: Int) {
+        if (item.uri.endsWith(":collection"))
+            "可能会永远播放第一首, 这是 spotify 的问题".toast()
+        remote?.playerApi?.skipToIndex(item.uri, index)
+    }
+
     fun seekTo(position: Long) {
         remote?.playerApi?.seekTo(position)
     }
 
+    fun getChildOfItem(item: ListItem, page: Int, size: Int, callback: (List<ListItem>) -> Unit) {
+        scope.launch { callback(getChildOfItem(item, page, size)) }
+    }
+
     // 获取种类中的歌单
-    suspend fun getChildOfItem(
+    private suspend fun getChildOfItem(
         item: ListItem,
         page: Int = 0,
-        size: Int = 10
+        size: Int = LOAD_COUNTS_PER_TIME
     ): List<ListItem> = coroutineScope {
         var list = listOf<ListItem>()
         async {
-            remote?.contentApi?.getChildrenOfItem(item, size, page)
+            remote?.contentApi?.getChildrenOfItem(item, size, page * size)
                 ?.setResultCallback { listItems ->
                     list = listItems.items.toList()
                 }?.await() // 这是关键,,,
         }.await()
-        logE(TAG, item.title + " size: " + list.size.toString())
+        logE(TAG, "${item.title} hasChildren: ${item.hasChildren} size: ${list.size}")
         list
     }
 

@@ -134,6 +134,15 @@ class ScrollTextView @JvmOverloads constructor(
         startScrollCoroutine() // 启动协程
     }
 
+    override fun onTextChanged(
+        text: CharSequence?,
+        start: Int,
+        lengthBefore: Int,
+        lengthAfter: Int
+    ) {
+        super.onTextChanged(text, start, lengthBefore, lengthAfter)
+//        offsetX = 0
+    }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
