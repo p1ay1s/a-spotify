@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.niki.app.databinding.ActivityMainBinding
 import com.niki.app.listen_now.ListenNowFragment
+import com.niki.app.ui.LoadingDialog
 import com.niki.util.Point
 import com.niki.util.getIntersectionPoint
 import com.niki.util.loadRadiusBitmap
@@ -46,7 +47,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         private const val SEEKBAR_SCALE = 15.0 // 进度条的细腻程度, 越大越细腻
 
-        const val SEEKBAR_MAX = SEEKBAR_SCALE * 100
+        const val SEEKBAR_MAX = SEEKBAR_SCALE * 17
 
         private const val BOTTOM_NAV_WEIGHT = 0.115
         private const val MINI_PLAYER_WEIGHT = 0.08
@@ -114,6 +115,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         } else {
             getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
+        appLoadingDialog = LoadingDialog(this@MainActivity)
         setSizes()
 
         viewModel = SpotifyRemote
@@ -136,6 +138,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         hostView.apply {
             fragmentManager = supportFragmentManager
             addHost(R.id.index_me)
+            addHost(R.id.index_search)
             addHost(
                 R.id.index_listen_now,
                 Fragments.LISTEN_NOW,
@@ -145,7 +148,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         SpotifyRemote.run {
             coverUrl.observe(this@MainActivity) {
-                loadImage(it) { bitmap ->
+                loadLargeImage(it) { bitmap ->
                     checkAndResetCover()
                     loadRadiusBitmap(bitmap, cover, RADIUS)
                     toBlurDrawable(bitmap) { blurDrawable ->

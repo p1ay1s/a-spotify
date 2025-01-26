@@ -31,18 +31,19 @@ class SongAdapter(private val type: ContentType) :
     }
 
     override fun ItemSongBinding.onBindViewHolder(data: ListItem?, position: Int) {
+        if (data == null) {
+            root.visibility = View.INVISIBLE
+            return
+        } else {
+            root.visibility = View.VISIBLE
+        }
+
         val h = (root.context.getRootHeight() * MARGIN_TOP_PERCENT).toInt()
 
         if (position == 0)
             root.setMargins(top = 2 * h)
         else
             root.setMargins(top = 0)
-
-        if (data == null) {
-            root.visibility = View.INVISIBLE
-            return
-        }
-        root.visibility = View.VISIBLE
 
         root.run {
             setOnClickListener {
@@ -64,7 +65,7 @@ class SongAdapter(private val type: ContentType) :
         } else {
             songDetails.visibility = View.VISIBLE
             songDetails.text = data.subtitle
-            SpotifyRemote.loadLowImage(data.imageUri.raw!!) { bitmap ->
+            SpotifyRemote.loadSmallImage(data.imageUri.raw!!) { bitmap ->
                 root.context.loadRadiusBitmap(bitmap, cover)
             }
         }

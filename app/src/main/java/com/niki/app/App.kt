@@ -21,7 +21,6 @@ class App : Application() {
             .build()
 
         var spotifyAppRemote: SpotifyAppRemote? = null
-            private set
 
         var onConnectedCallback: ((SpotifyAppRemote?) -> Unit)? = null
             private set

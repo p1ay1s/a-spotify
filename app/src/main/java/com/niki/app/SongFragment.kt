@@ -1,6 +1,7 @@
 package com.niki.app
 
 import android.widget.LinearLayout
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.niki.app.databinding.FragmentListItemBinding
 import com.niki.app.ui.SongAdapter
@@ -10,9 +11,14 @@ import com.zephyr.base.extension.addLineDecoration
 import com.zephyr.base.extension.addOnLoadMoreListener_V
 import com.zephyr.base.ui.PreloadLayoutManager
 import com.zephyr.vbclass.ViewBindingFragment
+import kotlinx.coroutines.launch
 
 class SongFragment(private val item: ListItem, private var listener: Listener?) :
     ViewBindingFragment<FragmentListItemBinding>() {
+
+    companion object {
+        const val ERROR_MSG = "空数据, 无法打开 SongFragment"
+    }
 
     interface Listener {
         fun onFetched(fragment: SongFragment)
@@ -37,14 +43,14 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             if (success) {
                 listener?.onFetched(this)
             } else {
-                listener?.onError(Exception("Cannot open a new song fragment"))
+                listener?.onError(Exception(ERROR_MSG))
             }
         }
     }
 
     override fun FragmentListItemBinding.initBinding() {
         if (item.id.parseSpotifyId() == ContentType.ALBUM)
-            SpotifyRemote.loadImage(item.imageUri.raw!!) { bitmap ->
+            SpotifyRemote.loadLargeImage(item.imageUri.raw!!) { bitmap ->
                 requireActivity().toBlurDrawable(bitmap) {
                     root.background = it
                 }
@@ -54,12 +60,16 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             setListener(object : SongAdapter.Listener {
                 override fun onClicked(item: ListItem, position: Int) {
                     vibrator?.vibrate(25L)
-                    openNewListItemFragment(item) { success ->
-                        if (item.playable && !success) {
-                            SpotifyRemote.playPlaylistWithIndex(
-                                this@SongFragment.item,
-                                position
-                            ) // 此 item 应为歌单列表 item
+                    if (!item.playable) {
+                        toastM("playable = false")
+                    } else if (!item.hasChildren) {
+                        SpotifyRemote.playPlaylistWithIndex(
+                            this@SongFragment.item, // 此 item 应为歌单列表 item
+                            position
+                        )
+                    } else {
+                        openNewListItemFragment(item) { success ->
+                            if (!success) toastM("未知错误")
                         }
                     }
                 }
@@ -73,7 +83,10 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
 
         recyclerView.apply {
             adapter = songAdapter
-            layoutManager = PreloadLayoutManager(requireActivity(), RecyclerView.VERTICAL)
+            layoutManager = PreloadLayoutManager(
+                requireActivity(), RecyclerView.VERTICAL,
+                PRE_LOAD_NUM
+            )
             addLineDecoration(requireActivity(), LinearLayout.VERTICAL)
             addOnLoadMoreListener_V(1) {
                 fetchData { success ->
@@ -119,22 +132,34 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             return
         }
 
-        SpotifyRemote.getChildOfItem(item, currentOffset, LOAD_BATCH_SIZE) { newItems ->
-            if (!isResumed && items.isNotEmpty()) {
-                // Fragment 不在前台且已有数据，忽略新数据
-                isFetching = false
-                return@getChildOfItem
-            }
+        lifecycleScope.launch {
+            SpotifyRemote.getChildrenOfItem(
+                item,
+                currentOffset,
+                LOAD_BATCH_SIZE,
+                5000L
+            ) { newItems ->
+                if (!isResumed && items.isNotEmpty()) {
+                    // Fragment 不在前台且已有数据，忽略新数据
+                    isFetching = false
+                    return@getChildrenOfItem
+                }
 
-            if (newItems.isNotEmpty()) {
-                currentOffset += newItems.size
-                items += newItems
-                ItemCachePool.cache(item.id, items.toMutableList())
-                callback(true)
-            } else {
-                callback(false)
+                if (newItems == null) {
+                    callback(false)
+                    return@getChildrenOfItem
+                }
+
+                if (newItems.isNotEmpty()) {
+                    currentOffset += newItems.size
+                    items += newItems
+                    ItemCachePool.cache(item.id, items.toMutableList())
+                    callback(true)
+                } else {
+                    callback(false)
+                }
+                isFetching = false
             }
-            isFetching = false
         }
     }
 }

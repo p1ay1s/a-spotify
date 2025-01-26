@@ -1,6 +1,7 @@
 package com.niki.app.listen_now
 
 import androidx.recyclerview.widget.RecyclerView
+import com.niki.app.PRE_LOAD_NUM
 import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.FragmentListenNowBinding
 import com.niki.app.interfaces.OnClickListener
@@ -25,7 +26,7 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
                 override fun onClicked(item: ListItem) {
                     vibrator?.vibrate(25L)
                     openNewListItemFragment(item) { success ->
-                        if (item.playable && !success)
+                        if (item.playable && !success) // 当 item 可播放并且无法打开歌单 fragment 时播放它
                             play(item)
                     }
                 }
@@ -36,7 +37,7 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
                 }
 
             })
-            connected.observe(this@ListenNowFragment) { connected ->
+            isConnected.observe(this@ListenNowFragment) { connected ->
                 if (!connected)
                     return@observe
                 getContentList {
@@ -47,7 +48,10 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
 
         recyclerView.run {
             adapter = collectionAdapter
-            layoutManager = PreloadLayoutManager(requireActivity(), RecyclerView.VERTICAL)
+            layoutManager = PreloadLayoutManager(
+                requireActivity(), RecyclerView.VERTICAL,
+                PRE_LOAD_NUM
+            )
         }
     }
 }

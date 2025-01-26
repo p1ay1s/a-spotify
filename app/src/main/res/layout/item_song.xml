@@ -29,16 +29,15 @@
             android:id="@+id/songDetails"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="7dp"
             android:ellipsize="marquee"
             android:maxLines="1"
             android:textColor="@color/unselected"
             android:textSize="12sp"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@id/cover"
-            app:layout_constraintTop_toBottomOf="@id/songName"
-            app:layout_constraintWidth_percent="0.8" />
+            app:layout_constraintEnd_toEndOf="@id/songName"
+            app:layout_constraintStart_toStartOf="@id/songName"
+            app:layout_constraintTop_toBottomOf="@id/songName" />
 
         <ImageView
             android:id="@+id/cover"

@@ -4,6 +4,7 @@ package com.niki.app
 import android.graphics.Bitmap
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.niki.util.getPlaceholderBitmap
 import com.spotify.android.appremote.api.ContentApi
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.protocol.types.Image
@@ -17,11 +18,11 @@ import com.zephyr.base.log.logE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 
 /**
  * 主要负责向 spotify 获取数据
@@ -29,17 +30,23 @@ import kotlinx.coroutines.withContext
 object SpotifyRemote {
     private val remote: SpotifyAppRemote?
         get() {
-            val r = App.spotifyAppRemote
-            if (r == null || !r.isConnected)
-                App.onFailureCallback?.invoke(null)
-            return r
+            App.run {
+                spotifyAppRemote
+                if (spotifyAppRemote?.isConnected != true) {
+                    if (spotifyAppRemote != null)
+                        spotifyAppRemote = null
+                    onFailureCallback?.invoke(null)
+                }
+                return spotifyAppRemote
+            }
         }
 
     private val isAvailable: Boolean
-        get() = remote != null
+        get() = remote?.isConnected == true
 
     private val TAG = this::class.java.simpleName
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val preCacheSemaphore = Semaphore(5) // 同时最多的并发
 
     private var _isPaused = MutableLiveData(false) // 正在播放
     val isPaused: LiveData<Boolean>
@@ -81,68 +88,84 @@ object SpotifyRemote {
     val isLoading: LiveData<Boolean>
         get() = _isLoading
 
-    private var _connected = MutableLiveData(false) // dev
-    val connected: LiveData<Boolean>
-        get() = _connected
+    private var _isConnected = MutableLiveData(false) // dev
+    val isConnected: LiveData<Boolean>
+        get() = _isConnected
 
-
-    private var awakeConnectionJob: Job? = null
+    private var keepConnectionJob: Job? = null
 
     init {
-        startAwakeConnectionJob()
+        startKeepConnectionJob()
 
-        connected.observeForever { isConnected ->
+        isConnected.observeForever { isConnected ->
             if (isConnected)
                 subscribeToState()
+            else
+                (appContext as? App)?.connectSpotify() // 此操作需在主线程进行
         }
     }
 
-    private fun startAwakeConnectionJob() {
-        awakeConnectionJob?.cancel()
-        awakeConnectionJob = scope.launch(Dispatchers.Main) {
+    private fun startKeepConnectionJob() {
+        keepConnectionJob?.cancel()
+        keepConnectionJob = scope.launch(Dispatchers.Main) {
             while (true) {
-                val a = isAvailable
-                if (a)
-                    (appContext as? App)?.connectSpotify() // 此操作需在主线程进行
-                _connected.checkAndSet(a)
-                delay(300)
+                _isConnected.checkAndSet(isAvailable)
+                getPlayerPosition()
+                delay(30)
             }
         }
     }
 
-    fun loadLowImage(uri: String, callback: (Bitmap) -> Unit) {
-        val fetchedBitmap = LowBitmapCachePool.fetch(uri)
-        if (fetchedBitmap != null) {
-            logE(TAG, "$uri: 获取了缓存图片")
-            callback(fetchedBitmap)
-            return
-        }
-        remote?.imagesApi?.getImage(ImageUri(uri), Image.Dimension.X_SMALL)
-            ?.setResultCallback {
-                LowBitmapCachePool.cache(uri, it)
-                callback(it)
-            }
+    fun loadSmallImage(uri: String, callback: (Bitmap) -> Unit) {
+        loadImage(uri, Image.Dimension.X_SMALL, callback)
     }
 
-    fun loadImage(uri: String, callback: (Bitmap) -> Unit) {
+    fun loadLargeImage(uri: String, callback: (Bitmap) -> Unit) {
+        loadImage(uri, Image.Dimension.LARGE, callback)
+    }
+
+    private fun loadImage(uri: String, size: Image.Dimension, callback: (Bitmap) -> Unit) {
         val fetchedBitmap = BitmapCachePool.fetch(uri)
+        val fetchedLowBitmap = BitmapCachePool.fetch(uri)
+
         if (fetchedBitmap != null) {
             logE(TAG, "$uri: 获取了缓存图片")
             callback(fetchedBitmap)
             return
+        } else if (fetchedLowBitmap != null && size.value < 300) {
+            logE(TAG, "$uri: 获取了缓存图片")
+            callback(fetchedLowBitmap)
+            return
         }
-        remote?.imagesApi?.getImage(ImageUri(uri), Image.Dimension.LARGE)
+
+        remote?.imagesApi?.getImage(ImageUri(uri), size)
             ?.setResultCallback {
-                BitmapCachePool.cache(uri, it)
+                if (size.value > 300)
+                    BitmapCachePool.cache(uri, it)
+                else
+                    LowBitmapCachePool.cache(uri, it)
                 callback(it)
+            }?.setErrorCallback {
+                val bitmap = getPlaceholderBitmap(0)
+                callback(bitmap)
             }
     }
 
-    fun subscribeToState() {
+    private fun getPlayerPosition() {
+        remote?.playerApi?.playerState?.setResultCallback { state ->
+            scope.launch(Dispatchers.Main) {
+                _progress.value = if (state.track != null)
+                    (state.playbackPosition * MainActivity.SEEKBAR_MAX / state.track.duration).toInt()
+                else 0
+            }
+        }
+    }
+
+    private fun subscribeToState() {
         remote?.playerApi?.subscribeToPlayerState()?.setEventCallback { state ->
             scope.launch(Dispatchers.Main) {
                 _isPaused.checkAndSet(state.isPaused) // 是否暂停
-                _playbackPosition.checkAndSet(state.playbackPosition) // 播放位置（毫秒）
+                _playbackPosition.checkAndSet(state.playbackPosition) // 播放位置（毫秒）失效...
                 _playbackSpeed.checkAndSet(state.playbackSpeed) // 播放速度
 
                 _isLoading.checkAndSet(state.isLoading())
@@ -153,9 +176,10 @@ object SpotifyRemote {
                     _albumName.checkAndSet(it.album.name)
                     _duration.checkAndSet(it.duration)
                     _coverUrl.checkAndSet(it.imageUri.raw)
-
-                    _progress.checkAndSet((playbackPosition.value!! * MainActivity.SEEKBAR_MAX / duration.value!!).toInt())
                 }
+
+//                _progress.value = // 失效, 不会主动更新
+//                (playbackPosition.value!! * MainActivity.SEEKBAR_MAX / duration.value!!).toInt()
             }
         }
     }
@@ -231,36 +255,92 @@ object SpotifyRemote {
      * 由 adapter item 进行渲染时预加载, 可以及时加载数据
      */
     fun preCacheChildren(item: ListItem) {
-        getChildOfItem(item, 0, LOAD_BATCH_SIZE) { items ->
-            if (items.isNotEmpty()) {
-                logE(TAG, "pre cached ${item.id}")
-                ItemCachePool.cache(item.id, items.toMutableList())
-            } else {
-                logE(TAG, "pre signaled ${item.id}")
-                ItemCachePool.cache(item.id, mutableListOf(getNoChildListItem))
+        scope.launch(Dispatchers.IO) {
+            preCacheSemaphore.withPermit {
+                logE(TAG, "try cache ${item.title}")
+                val items = getChildrenOfItem(item, 0, LOAD_BATCH_SIZE, 7000) ?: return@withPermit
+
+                if (items.isEmpty()) {
+                    logE(TAG, "signaled ${item.title}")
+                    ItemCachePool.cache(item.id, mutableListOf(getNoChildListItem))
+                } else {
+                    logE(TAG, "cached ${item.title}")
+                    ItemCachePool.cache(item.id, items.toMutableList())
+                }
             }
         }
     }
 
-    fun getChildOfItem(item: ListItem, offset: Int, size: Int, callback: (List<ListItem>) -> Unit) {
-        scope.launch { callback(getChildOfItem(item, offset, size)) }
-    }
-
-    // 获取种类中的歌单
-    private suspend fun getChildOfItem(
+    /**
+     * 挂起方法
+     */
+    suspend fun getChildrenOfItem(
         item: ListItem,
         offset: Int = 0,
-        size: Int = LOAD_BATCH_SIZE
-    ): List<ListItem> = coroutineScope {
-        var list = listOf<ListItem>()
-        async {
-            remote?.contentApi?.getChildrenOfItem(item, size, offset)
-                ?.setResultCallback { listItems ->
-                    list = listItems.items.toList()
-                }?.await() // 这是关键,,,
-        }.await()
-        logE(TAG, "${item.title} hasChildren: ${item.hasChildren} size: ${list.size}")
-        list
+        size: Int = LOAD_BATCH_SIZE,
+        timeout: Long = 10000,
+        callback: (List<ListItem>?) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        val list = getChildrenOfItem(item, offset, size, timeout)
+        withContext(Dispatchers.Main) {
+            callback(list)
+        }
+    }
+
+    /**
+     * 获取种类中的歌单
+     *
+     * 同步方法
+     *
+     * 当返回空 list 则表示获取成功但无数据, 如果返回空则表示错误
+     */
+    fun getChildrenOfItem(
+        item: ListItem,
+        offset: Int = 0,
+        size: Int = LOAD_BATCH_SIZE,
+        timeout: Long = 10000
+    ): List<ListItem>? {
+        var list: List<ListItem>? = listOf()
+        val error = remote
+            ?.contentApi
+            ?.getChildrenOfItem(item, size, offset)
+            ?.setResultCallback { listItems ->
+                list = listItems.items.toList()
+            }
+            ?.await(timeout, TimeUnit.MILLISECONDS) // 这是关键,,,
+            ?.error
+
+        error?.let {
+            it.log(TAG)
+            if (list.isNullOrEmpty())
+                list = null
+        }
+        logE(TAG, "${item.title}\nhasChildren: ${item.hasChildren}\nsize: ${list?.size}")
+
+        return list
+    }
+
+    /**
+     * 异步方法
+     */
+    fun getChildrenOfItem(
+        item: ListItem,
+        offset: Int = 0,
+        size: Int = LOAD_BATCH_SIZE,
+        callback: (List<ListItem>?) -> Unit
+    ) {
+        remote?.contentApi
+            ?.getChildrenOfItem(item, size, offset)
+            ?.setResultCallback { listItems ->
+                val list = listItems.items.toList()
+                logE(TAG, "${item.title}\nhasChildren: ${item.hasChildren}\nsize: ${list.size}")
+                callback(list)
+            }
+            ?.setErrorCallback {
+                it.log(TAG)
+                logE(TAG, "${item.title}\nhasChildren: ${item.hasChildren}\nsize null")
+                callback(null)
+            }
     }
 }
 

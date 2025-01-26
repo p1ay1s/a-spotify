@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.util.Log
 import android.widget.ImageView
+import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
@@ -17,6 +18,10 @@ import com.bumptech.glide.request.transition.Transition
 import jp.wasabeef.glide.transformations.BlurTransformation
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+
+fun getPlaceholderBitmap(radius: Int): Bitmap {
+    return getPlaceholder(radius).toBitmap()
+}
 
 fun getPlaceholder(radius: Int) = GradientDrawable().apply {
     shape = GradientDrawable.RECTANGLE
