@@ -16,6 +16,7 @@ import com.zephyr.base.log.logE
 import com.zephyr.base.ui.findHost
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Semaphore
@@ -106,7 +107,10 @@ fun Fragment.openNewListItemFragment(item: ListItem, callback: (Boolean) -> Unit
         override fun onFetched(fragment: SongFragment) {
             appLoadingDialog?.dismiss()
             openNewFragment(item.id, fragment)
-            callback(true)
+            lifecycleScope.launch(Dispatchers.Main) {
+                delay(500) // 避免同时打开几个
+                callback(true)
+            }
         }
 
         override fun onError(e: Exception) {

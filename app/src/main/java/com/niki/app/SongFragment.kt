@@ -29,6 +29,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
     private lateinit var songAdapter: SongAdapter
     private var isFetching = false
     private var currentOffset = 0
+    private var isOpening = false
 
     init {
         initializeData()
@@ -68,8 +69,11 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
                             position
                         )
                     } else {
+                        if (isOpening) return
+                        isOpening = true
                         openNewListItemFragment(item) { success ->
                             if (!success) toastM("未知错误")
+                            isOpening = false
                         }
                     }
                 }

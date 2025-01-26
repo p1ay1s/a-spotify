@@ -17,6 +17,8 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
 
     private lateinit var collectionAdapter: CollectionAdapter
 
+    private var isOpening = false
+
     override fun FragmentListenNowBinding.initBinding() {
 
         SpotifyRemote.run {
@@ -24,10 +26,13 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
 
             collectionAdapter.setOnClickListener(object : OnClickListener {
                 override fun onClicked(item: ListItem) {
+                    if (isOpening) return
+                    isOpening = true
                     vibrator?.vibrate(25L)
                     openNewListItemFragment(item) { success ->
                         if (item.playable && !success) // 当 item 可播放并且无法打开歌单 fragment 时播放它
                             play(item)
+                        isOpening = false
                     }
                 }
 
