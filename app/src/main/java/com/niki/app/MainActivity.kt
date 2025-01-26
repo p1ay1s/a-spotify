@@ -144,9 +144,6 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         }
 
         SpotifyRemote.run {
-            startAwakeConnectionJob()
-            startRefreshInfosJob()
-
             coverUrl.observe(this@MainActivity) {
                 loadImage(it) { bitmap ->
                     checkAndResetCover()

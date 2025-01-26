@@ -58,14 +58,14 @@ class App : Application() {
                 override fun onConnected(appRemote: SpotifyAppRemote?) {
                     onConnectedCallback?.invoke(appRemote)
                     spotifyAppRemote = appRemote
-                    isConnecting = false
                     logE("APP", "remote 已连接")
+                    isConnecting = false
                 }
 
                 override fun onFailure(throwable: Throwable?) {
                     onFailureCallback?.invoke(throwable)
-                    isConnecting = false
                     logE("APP", "remote 连接失败")
+                    isConnecting = false
                 }
             })
     }

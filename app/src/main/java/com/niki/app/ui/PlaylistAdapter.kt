@@ -1,9 +1,10 @@
 package com.niki.app.ui
 
 import androidx.core.view.marginEnd
-import androidx.recyclerview.widget.DiffUtil
+import com.niki.app.ListItemCallback
 import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.ItemPlaylistBinding
+import com.niki.app.interfaces.OnClickListener
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootWidth
@@ -11,22 +12,21 @@ import com.zephyr.base.extension.setMargins
 import com.zephyr.base.extension.setSize
 import com.zephyr.vbclass.ui.ViewBindingListAdapter
 
-class PlaylistAdapter(private val onClick: (Int) -> Unit) :
-    ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(StrCallback()) {
+class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(ListItemCallback()) {
+
+    var isFetching = false
+    var offset = 0
+
+    private var listener: OnClickListener? = null
+
+    fun setOnClickListener(l: OnClickListener?) {
+        listener = l
+    }
+
     companion object {
         private const val WIDTH_PERCENT = 0.4
 
         private const val RADIUS = 40
-    }
-
-    class StrCallback : DiffUtil.ItemCallback<ListItem>() {
-        override fun areItemsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
-            return oldItem == newItem
-        }
-
-        override fun areContentsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
-            return oldItem == newItem
-        }
     }
 
     override fun ItemPlaylistBinding.onBindViewHolder(data: ListItem?, position: Int) {
@@ -50,7 +50,14 @@ class PlaylistAdapter(private val onClick: (Int) -> Unit) :
 
         name.text = data.title
         root.setOnClickListener {
-            onClick(position)
+            listener?.onClicked(data)
         }
+
+        root.setOnLongClickListener {
+            listener?.onLongClicked(data)
+            false
+        }
+
+        SpotifyRemote.preCacheChildren(data)
     }
 }

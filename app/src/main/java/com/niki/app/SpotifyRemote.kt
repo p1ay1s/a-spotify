@@ -1,8 +1,10 @@
+//@file:Suppress("FunctionName")
 package com.niki.app
 
 import android.graphics.Bitmap
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.spotify.android.appremote.api.ContentApi
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.protocol.types.Image
 import com.spotify.protocol.types.ImageUri
@@ -25,7 +27,7 @@ import kotlinx.coroutines.withContext
  * 主要负责向 spotify 获取数据
  */
 object SpotifyRemote {
-    val remote: SpotifyAppRemote?
+    private val remote: SpotifyAppRemote?
         get() {
             val r = App.spotifyAppRemote
             if (r == null || !r.isConnected)
@@ -33,12 +35,11 @@ object SpotifyRemote {
             return r
         }
 
-    val isAvailable: Boolean
-        get() = remote?.isConnected ?: false
-
+    private val isAvailable: Boolean
+        get() = remote != null
 
     private val TAG = this::class.java.simpleName
-    val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     private var _isPaused = MutableLiveData(false) // 正在播放
     val isPaused: LiveData<Boolean>
@@ -85,29 +86,26 @@ object SpotifyRemote {
         get() = _connected
 
 
-    private var refreshInfosJob: Job? = null
     private var awakeConnectionJob: Job? = null
 
-    fun startRefreshInfosJob() {
-        refreshInfosJob?.cancel()
-        refreshInfosJob = scope.launch(Dispatchers.IO) {
-            while (true) {
-                _connected.checkAndSet(remote != null)
-                refreshInfos()
-                delay(15)
-            }
+    init {
+        startAwakeConnectionJob()
+
+        connected.observeForever { isConnected ->
+            if (isConnected)
+                subscribeToState()
         }
     }
 
-    fun startAwakeConnectionJob() {
+    private fun startAwakeConnectionJob() {
         awakeConnectionJob?.cancel()
-        awakeConnectionJob = scope.launch(Dispatchers.IO) {
+        awakeConnectionJob = scope.launch(Dispatchers.Main) {
             while (true) {
-                withContext(Dispatchers.Main) {
-                    if (!isAvailable)
-                        (appContext as? App)?.connectSpotify() // 此操作需在主线程进行
-                }
-                delay(1000)
+                val a = isAvailable
+                if (a)
+                    (appContext as? App)?.connectSpotify() // 此操作需在主线程进行
+                _connected.checkAndSet(a)
+                delay(300)
             }
         }
     }
@@ -140,8 +138,8 @@ object SpotifyRemote {
             }
     }
 
-    private fun refreshInfos() {
-        remote?.playerApi?.playerState?.setResultCallback { state ->
+    fun subscribeToState() {
+        remote?.playerApi?.subscribeToPlayerState()?.setEventCallback { state ->
             scope.launch(Dispatchers.Main) {
                 _isPaused.checkAndSet(state.isPaused) // 是否暂停
                 _playbackPosition.checkAndSet(state.playbackPosition) // 播放位置（毫秒）
@@ -174,12 +172,13 @@ object SpotifyRemote {
         }
     }
 
-    fun play(uri: String? = null) {
-        if (uri.isNullOrEmpty()) {
+    fun play(item: ListItem? = null) {
+        if (item == null)
             remote?.playerApi?.resume()
-        } else {
-            remote?.playerApi?.play(uri)
-        }
+        else if (item.hasChildren)
+            remote?.contentApi?.playContentItem(item)
+        else if (!item.uri.isNullOrEmpty())
+            remote?.playerApi?.play(item.uri)
     }
 
     fun pause() {
@@ -200,36 +199,27 @@ object SpotifyRemote {
                 this@checkAndSet.value = value
         }
 
-    fun getListItems(callback: (ListItems) -> Unit) {
-        remote?.contentApi?.getRecommendedContentItems("")
+    private fun getContents(callback: (ListItems) -> Unit) {
+        remote?.contentApi?.getRecommendedContentItems(ContentApi.ContentType.DEFAULT) // 使用不同的 type 得到的结果似乎是相同的
             ?.setResultCallback { callback(it) }
     }
 
-    fun getListItemList(callback: (List<ListItem>) -> Unit) {
-        getListItems {
+    fun getContentList(callback: (List<ListItem>) -> Unit) {
+        getContents {
             val list = mutableListOf<ListItem>()
-            it.items.forEach { item ->
+            it.items.forEach { item -> // 直接 toList 貌似不行
                 list.add(item)
             }
             callback(list)
         }
     }
 
-    /**
-     * 获取 List 对象, 提供给 adapter
-     */
-    fun getItemListNonNull(callback: (List<Item>) -> Unit) {
-        getListItemList { filterListItem(it) { items -> callback(items) } }
-    }
-
-    // 播放歌单
-    fun playPlaylist(item: ListItem) {
-        remote?.contentApi?.playContentItem(item)
-    }
-
     fun playPlaylistWithIndex(item: ListItem, index: Int) {
-        if (item.uri.endsWith(":collection"))
-            "可能会永远播放第一首, 这是 spotify 的问题".toast()
+        if (item.uri.endsWith(":collection")) {
+            scope.launch(Dispatchers.Main) {
+                "可能会永远播放第一首, 这是 spotify 的问题".toast()
+            }
+        }
         remote?.playerApi?.skipToIndex(item.uri, index)
     }
 
@@ -237,19 +227,34 @@ object SpotifyRemote {
         remote?.playerApi?.seekTo(position)
     }
 
-    fun getChildOfItem(item: ListItem, page: Int, size: Int, callback: (List<ListItem>) -> Unit) {
-        scope.launch { callback(getChildOfItem(item, page, size)) }
+    /**
+     * 由 adapter item 进行渲染时预加载, 可以及时加载数据
+     */
+    fun preCacheChildren(item: ListItem) {
+        getChildOfItem(item, 0, LOAD_BATCH_SIZE) { items ->
+            if (items.isNotEmpty()) {
+                logE(TAG, "pre cached ${item.id}")
+                ItemCachePool.cache(item.id, items.toMutableList())
+            } else {
+                logE(TAG, "pre signaled ${item.id}")
+                ItemCachePool.cache(item.id, mutableListOf(getNoChildListItem))
+            }
+        }
+    }
+
+    fun getChildOfItem(item: ListItem, offset: Int, size: Int, callback: (List<ListItem>) -> Unit) {
+        scope.launch { callback(getChildOfItem(item, offset, size)) }
     }
 
     // 获取种类中的歌单
     private suspend fun getChildOfItem(
         item: ListItem,
-        page: Int = 0,
-        size: Int = LOAD_COUNTS_PER_TIME
+        offset: Int = 0,
+        size: Int = LOAD_BATCH_SIZE
     ): List<ListItem> = coroutineScope {
         var list = listOf<ListItem>()
         async {
-            remote?.contentApi?.getChildrenOfItem(item, size, page * size)
+            remote?.contentApi?.getChildrenOfItem(item, size, offset)
                 ?.setResultCallback { listItems ->
                     list = listItems.items.toList()
                 }?.await() // 这是关键,,,
@@ -257,30 +262,9 @@ object SpotifyRemote {
         logE(TAG, "${item.title} hasChildren: ${item.hasChildren} size: ${list.size}")
         list
     }
-
-    private fun filterListItem(list: List<ListItem>, callback: (List<Item>) -> Unit) {
-        scope.launch(Dispatchers.IO) {
-            val resultList = mutableListOf<Item>()
-
-            async {
-                list.forEach { listItem ->
-                    val item = Item(listItem)
-                    val children = getChildOfItem(listItem)
-                    if (children.isNotEmpty()) {
-                        item.children = children
-                        resultList.add(item)
-                    }
-                }
-            }.await()
-
-            withContext(Dispatchers.Main) {
-                logE(TAG, "parent size: " + resultList.size.toString())
-                callback(resultList)
-            }
-        }
-    }
 }
 
-class Item(val listItem: ListItem) {
-    var children: List<ListItem> = emptyList()
-}
+//        scope.launch(Dispatchers.IO) {
+//            async {
+//                耗时操作
+//            }.await()
