@@ -3,6 +3,7 @@ package com.niki.app
 import android.content.Context
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -37,7 +38,13 @@ fun LifecycleOwner.toastM(msg: String) {
     lifecycleScope.launch(Dispatchers.Main) { msg.toast() }
 }
 
-val getNoChildListItem: ListItem
+suspend fun <T> MutableLiveData<T?>.checkAndSet(value: T?) =
+    withContext(Dispatchers.Main) {
+        if (value != this@checkAndSet.value && value != null)
+            this@checkAndSet.value = value
+    }
+
+val noChildListItem: ListItem
     get() = ListItem(
         NO_CHILD_SIGNAL,
         NO_CHILD_SIGNAL,
@@ -77,7 +84,7 @@ fun String.parseSpotifyId(): ContentType {
 }
 
 fun Throwable.log(tag: String) {
-    logE(tag, "${cause}\n${message}\n${stackTraceToString()}")
+    logE(tag, "${message}\n${cause}\n${stackTraceToString()}")
 }
 
 suspend fun Semaphore.withPermit(block: suspend () -> Unit) = withContext(Dispatchers.IO) {

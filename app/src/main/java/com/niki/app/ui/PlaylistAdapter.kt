@@ -29,7 +29,7 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
     companion object {
         private const val WIDTH_PERCENT = 0.4
 
-        private const val RADIUS = 40
+        private const val RADIUS = 33
     }
 
     override fun ItemPlaylistBinding.onBindViewHolder(data: ListItem?, position: Int) {

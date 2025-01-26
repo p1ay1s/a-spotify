@@ -1,7 +1,12 @@
 package com.niki.util
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 open class CachePool<ID, D>(private val initSize: Int) {
     protected val TAG = this::class.java.simpleName
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     // 使用 LinkedHashMap 并重写 removeEldestEntry 方法
     private val cachePools = object : LinkedHashMap<ID, D>(16, 0.75f, true) {
@@ -17,7 +22,7 @@ open class CachePool<ID, D>(private val initSize: Int) {
             field = value // LinkedHashMap 的 removeEldestEntry 会自动处理池的数量
         }
 
-    fun cache(id: ID, data: D) {
+    fun cache(id: ID, data: D) = scope.launch(Dispatchers.IO) {
         cachePools[id] = data
     }
 

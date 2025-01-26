@@ -20,12 +20,15 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 fun getPlaceholderBitmap(radius: Int): Bitmap {
-    return getPlaceholder(radius).toBitmap()
+    return getPlaceholder(radius, 1).toBitmap()
 }
 
-fun getPlaceholder(radius: Int) = GradientDrawable().apply {
+fun getPlaceholder(radius: Int, size: Int? = null) = GradientDrawable().apply {
     shape = GradientDrawable.RECTANGLE
-    cornerRadius = radius * 1.2F // 设置圆角半径
+    if (radius != 0)
+        cornerRadius = radius * 1.2F // 设置圆角半径
+    if (size != null)
+        setSize(size, size)
     setColor(Color.parseColor("#90909080")) // 设置颜色
 }
 

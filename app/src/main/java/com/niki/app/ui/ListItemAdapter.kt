@@ -100,7 +100,7 @@ class CollectionAdapter :
                 if (currentList.isEmpty()) {
                     removeItemSafely(data)
                 }
-                logE(TAG, "${data.title} 加载完")
+                logE(TAG, "${data.title} 加载完毕")
             }
             isFetching = false
         }
@@ -115,7 +115,7 @@ class CollectionAdapter :
             withContext(Dispatchers.Main) {
                 submitList(filteredItems) {
                     pendingRemovals.remove(item) // 在提交成功后移除该项
-                    logE(TAG, "${item.title} 已移除")
+                    logE(TAG, "空数据 ${item.title} 已移除")
                 }
             }
         }

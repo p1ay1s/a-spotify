@@ -63,7 +63,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
                     if (!item.playable) {
                         toastM("playable = false")
                     } else if (!item.hasChildren) {
-                        SpotifyRemote.playPlaylistWithIndex(
+                        SpotifyRemote.playItemAtIndex(
                             this@SongFragment.item, // 此 item 应为歌单列表 item
                             position
                         )
@@ -118,7 +118,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
         // 尝试从缓存获取数据
         val cachedItems = ItemCachePool.fetch(item.id)
 
-        if (cachedItems?.contains(getNoChildListItem) == true) {
+        if (cachedItems?.contains(noChildListItem) == true) {
             callback(false)
             isFetching = false
             return
@@ -133,21 +133,20 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
         }
 
         lifecycleScope.launch {
-            SpotifyRemote.getChildrenOfItem(
+            SpotifyRemote.getChildrenOfItemS(
                 item,
                 currentOffset,
-                LOAD_BATCH_SIZE,
-                5000L
+                LOAD_BATCH_SIZE
             ) { newItems ->
                 if (!isResumed && items.isNotEmpty()) {
                     // Fragment 不在前台且已有数据，忽略新数据
                     isFetching = false
-                    return@getChildrenOfItem
+                    return@getChildrenOfItemS
                 }
 
                 if (newItems == null) {
                     callback(false)
-                    return@getChildrenOfItem
+                    return@getChildrenOfItemS
                 }
 
                 if (newItems.isNotEmpty()) {

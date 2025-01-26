@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.graphics.drawable.TransitionDrawable
 import android.os.Build
 import android.os.Vibrator
-import android.os.VibratorManager
 import android.view.View
 import android.widget.SeekBar
 import androidx.activity.enableEdgeToEdge
@@ -32,10 +31,8 @@ import com.zephyr.base.extension.setSize
 import com.zephyr.base.extension.showStatusBar
 import com.zephyr.base.extension.toast
 import com.zephyr.vbclass.ViewBindingActivity
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 var vibrator: Vibrator? = null
 
@@ -43,7 +40,7 @@ var vibrator: Vibrator? = null
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     companion object {
-        const val RADIUS = 35
+        private const val RADIUS = 35
 
         private const val SEEKBAR_SCALE = 15.0 // 进度条的细腻程度, 越大越细腻
 
@@ -64,13 +61,11 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     // 各种尺寸参数
     // {
-    private var _parentHeight: Int = 0
-    val parentHeight: Int
-        get() = _parentHeight
+    var parentHeight: Int = 0
+        private set
 
-    private var _parentWidth: Int = 0
-    val parentWidth: Int
-        get() = _parentWidth
+    var parentWidth: Int = 0
+        private set
 
     private var bottomNavHeight: Int = 0
     private var miniPlayerHeight: Int = 0
@@ -78,31 +73,25 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     // }
 
     private val netViewModel by lazy { ViewModelProvider(this)[NetViewModel::class.java] }
-
-    private var authClintIsRunning = false
-
-    private var allowAutoSetProgress = true
-
-    private var notedProgress = 0
-
-    private var lastBackPressedTimeSet = -1L
+    private val mainViewModel by lazy { ViewModelProvider(this)[MainViewModel::class.java] }
 
     // spotify app 授权的 activity result launcher
-    private val launcher = registerForActivityResult(
+    private val activityResultLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        AuthorizationClient.getResponse(result.resultCode, result.data).run {
-            (application as? App)?.connectSpotify()
-            when (type) {
-                AuthorizationResponse.Type.CODE ->
-                    netViewModel.getTokensWithCode(code)
-
-                AuthorizationResponse.Type.TOKEN ->
-                    netViewModel.putTokens(accessToken, "")
-
-                else -> "授权失败: ${type.name}".toast()
-            }
-            authClintIsRunning = false
+        val response = AuthorizationClient.getResponse(result.resultCode, result.data)
+        response.run {
+//            暂时不用 web api
+//            when (type) {
+//                AuthorizationResponse.Type.CODE ->
+//                    netViewModel.getTokensWithCode(code)
+//
+//                AuthorizationResponse.Type.TOKEN ->
+//                    netViewModel.putTokens(accessToken, "")
+//
+//                else -> "授权失败: ${type.name}".toast()
+//            }
+            mainViewModel.authClintIsRunning = false
         }
     }
 
@@ -110,30 +99,14 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             useFullScreen()
 
-        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-        } else {
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
-        }
         appLoadingDialog = LoadingDialog(this@MainActivity)
+
         setSizes()
 
         viewModel = SpotifyRemote
         lifecycleOwner = this@MainActivity
 
-        App.setOnFailureCallback {
-            floatButton.visibility = View.VISIBLE
-        }
-        App.setOnConnectedCallback {
-            floatButton.visibility = View.INVISIBLE
-        }
-
         seekbar.setOnSeekBarChangeListener(OnSeekListenerImpl())
-
-        bottomNavigation.setOnItemSelectedListener { item ->
-            hostView.switchHost(item.itemId, R.anim.fade_in, R.anim.fade_out)
-            true
-        }
 
         hostView.apply {
             fragmentManager = supportFragmentManager
@@ -146,7 +119,33 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             )
         }
 
+        bottomNavigation.setOnItemSelectedListener { item ->
+            hostView.switchHost(item.itemId, R.anim.fade_in, R.anim.fade_out)
+            true
+        }
+
+        seekbar.max = SEEKBAR_MAX.toInt()
+
+        floatButton.setOnClickListener {
+            authenticateSpotify()
+        }
+
+        playerBehavior.apply {
+            val impl = BottomSheetCallbackImpl()
+            addBottomSheetCallback(impl)
+            impl.onSlide(player, 0.0F) // 手动复位
+            player.setOnClickListener {
+                if (this.state != BottomSheetBehavior.STATE_EXPANDED)
+                    this.state = BottomSheetBehavior.STATE_EXPANDED
+            }
+        }
+
         SpotifyRemote.run {
+            isConnected.observe(this@MainActivity) {
+                floatButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
+            }
+
+            // 图片加载
             coverUrl.observe(this@MainActivity) {
                 loadLargeImage(it) { bitmap ->
                     checkAndResetCover()
@@ -161,98 +160,80 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 }
             }
 
+            // 暂停图片切换
             isPaused.observe(this@MainActivity) { isPaused ->
                 val res = if (isPaused) R.drawable.ic_play else R.drawable.ic_pause
                 play.setImageResource(res)
                 miniPlay.setImageResource(res)
             }
 
+            // seekbar 进度
             progress.observe(this@MainActivity) {
-                if (allowAutoSetProgress)
+                if (mainViewModel.allowAutoSetProgress)
                     seekbar.progress = it
             }
 
+            // seekbar 加载中
             isLoading.observe(this@MainActivity) {
                 seekbar.isLoading = it
             }
         }
 
-        netViewModel.run {
-            startWatchTokenDateJob()
-            checkTokens { result ->
-                if (result == NetViewModel.TOKEN_FAILED)
-                    authenticateSpotify()
-            }
-        }
-
-        playerBehavior.apply {
-            val impl = BottomSheetCallbackImpl()
-            addBottomSheetCallback(impl)
-            impl.onSlide(player, 0.0F)
-            player.setOnClickListener {
-                if (this.state != BottomSheetBehavior.STATE_EXPANDED)
-                    this.state = BottomSheetBehavior.STATE_EXPANDED
-            }
-        }
-
-        seekbar.max = SEEKBAR_MAX.toInt()
-
-        floatButton.setOnClickListener {
-            authenticateSpotify()
-        }
+//        netViewModel.run { // 其实逻辑可能有点问题
+//            startWatchTokenDateJob()
+//            checkTokens { result ->
+//                if (result == NetViewModel.TOKEN_FAILED)
+//                    authenticateSpotify()
+//            }
+//        }
     }
 
-    private fun setSizes() {
-        binding.run {
-            _parentHeight = getScreenHeight()
-            _parentWidth = getScreenWidth()
+    /**
+     * 由于根部局为 CoordinatorLayout 许多 view 的大小难以在 xml 中设置所以统一用代码实现
+     */
+    private fun ActivityMainBinding.setSizes() {
+        parentHeight = getScreenHeight()
+        parentWidth = getScreenWidth()
 
-            bottomNavHeight = (_parentHeight * BOTTOM_NAV_WEIGHT).toInt()
-            miniPlayerHeight = (_parentHeight * MINI_PLAYER_WEIGHT).toInt()
-            minCoverHeight = (miniPlayerHeight * MINI_COVER_SIZE).toInt()
+        bottomNavHeight = (parentHeight * BOTTOM_NAV_WEIGHT).toInt()
+        miniPlayerHeight = (parentHeight * MINI_PLAYER_WEIGHT).toInt()
+        minCoverHeight = (miniPlayerHeight * MINI_COVER_SIZE).toInt()
+        val hostViewHeight = parentHeight - bottomNavHeight - miniPlayerHeight
 
-            playerBehavior.isHideable = false
-            playerBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
-            playerBehavior.peekHeight = bottomNavHeight + miniPlayerHeight
+        hostView.setSize(height = hostViewHeight)
+        bottomNavigation.setSize(height = bottomNavHeight)
 
-            hostView.setSize(
-                height = _parentHeight - bottomNavHeight - miniPlayerHeight
-            )
-            bottomNavigation.setSize(height = bottomNavHeight)
+        cover.setSize((0.7 * parentWidth).toInt())
+        cover.setMargins(top = (0.17 * parentHeight).toInt())
+        songName.setMargins(top = (0.02 * parentHeight).toInt())
+        seekbar.setMargins(top = (0.02 * parentHeight).toInt())
+        play.setMargins(top = (0.1 * parentHeight).toInt())
 
-            cover.setSize((0.7 * _parentWidth).toInt())
+        line.setMargins(bottom = bottomNavHeight)
+        floatButton.setMargins(end = (0.08 * parentWidth).toInt())
 
-            cover.setMargins(top = (0.17 * _parentHeight).toInt())
-            songName.setMargins(top = (0.02 * _parentHeight).toInt())
-            seekbar.setMargins(top = (0.02 * _parentHeight).toInt())
-            play.setMargins(top = (0.1 * _parentHeight).toInt())
-            line.setMargins(bottom = bottomNavHeight)
-            floatButton.setMargins(end = (0.08 * _parentWidth).toInt())
+        playerBehavior.isHideable = false
+        playerBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+        playerBehavior.peekHeight = bottomNavHeight + miniPlayerHeight
 
-            miniPlayer.setSize(
-                height = miniPlayerHeight,
-                width = _parentWidth - miniPlayerHeight
-            )
-
-            lifecycleScope.launch(Dispatchers.IO) {
-                while (miniPlay.width == 0)
-                    delay(15)
-                withContext(Dispatchers.Main) {
-                    seekbar.setSize(width = cover.width)
-                    miniPlay.run {
-                        setSize(width)
-                    }
-                    miniNext.run {
-                        setSize(width)
-                    }
-                }
+        miniPlayer.setSize(
+            height = miniPlayerHeight,
+            width = parentWidth - miniPlayerHeight
+        )
+        main.post { // 确保有效地设置大小
+            seekbar.setSize(width = cover.width)
+            miniPlay.run {
+                setSize(width)
+            }
+            miniNext.run {
+                setSize(width)
             }
         }
     }
 
     private fun useFullScreen() {
         enableEdgeToEdge()
-        // 应用全屏时，用户仍然可以从屏幕顶部下拉唤出状态栏，此行代码实现当用户唤出状态栏后，自动隐藏状态栏
+        // 应用全屏时, 用户仍然可以从屏幕顶部下拉唤出状态栏, 此行代码实现当用户唤出状态栏后, 自动隐藏状态栏
         WindowCompat.getInsetsController(window, window.decorView).systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
@@ -261,9 +242,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
      * 拉起 spotify 客户端进行授权
      */
     private fun authenticateSpotify() {
-        if (authClintIsRunning)
-            return
-        authClintIsRunning = true
+        if (mainViewModel.authClintIsRunning) return
+        mainViewModel.authClintIsRunning = true
 
         val builder = AuthorizationRequest.Builder(
             CLIENT_ID,
@@ -281,10 +261,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         )
 
         val request = builder.build()
-
         val intent = AuthorizationClient.createLoginActivityIntent(this, request)
-
-        launcher.launch(intent)
+        activityResultLauncher.launch(intent)
     }
 
     /**
@@ -317,12 +295,15 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             showStatusBar()
             if (slideOffset in 0.0F..1.0F) {
                 binding.run {
-                    shade.alpha = 1 - slideOffset * 15 // 使小播放器渐变消失
-                    val navTranslationY = bottomNavHeight * slideOffset * 2 // 导航栏的偏移量
+                    shade.alpha = 1 - slideOffset * 15 // 使遮罩逐渐消失, 让背景显现
+                    val navY = bottomNavHeight * slideOffset * 2 // 导航栏的偏移量
+                    val floatBtnY =
+                        parentHeight * -(0.8F * slideOffset + 0.23F) // 大概让按钮跟随 behavior 移动
 
-                    bottomNavigation.translationY = navTranslationY
-                    floatButton.translationY = _parentHeight * -(0.8F * slideOffset + 0.23F)
-                    line.translationY = navTranslationY
+                    bottomNavigation.translationY = navY
+                    line.translationY = navY
+
+                    floatButton.translationY = floatBtnY
                 }
             }
 
@@ -333,21 +314,21 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     inner class OnSeekListenerImpl : SeekBar.OnSeekBarChangeListener {
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
             if (fromUser)
-                notedProgress = progress
+                mainViewModel.notedProgress = progress
         }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            allowAutoSetProgress = false
+            mainViewModel.allowAutoSetProgress = false
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
             SpotifyRemote.run {
-                val percent = notedProgress / SEEKBAR_MAX
+                val percent = mainViewModel.notedProgress / SEEKBAR_MAX
                 val time = (percent * duration.value!!).toLong()
                 seekTo(time)
                 lifecycleScope.launch {
                     delay(100)
-                    allowAutoSetProgress = true // 缓冲一下, 以免闪烁
+                    mainViewModel.allowAutoSetProgress = true // 缓冲一下, 以免闪烁
                 }
             }
         }
@@ -358,55 +339,52 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
      *
      * pivot 计算原理: 以 cover 左上角为原点, 求完全缩小和原始尺寸的 cover 的右上角、左下角坐标的交点即为 pivot 点
      */
-    private fun adjustCover(slideOffset: Float) {
-        binding.cover.run {
-            val coverHeight = height // cover 的宽高
+    private fun adjustCover(slideOffset: Float) = binding.cover.run {
+        val coverHeight = height // cover 的宽高
+        if (coverHeight == 0) return@run // 若未加载出图片则返回
 
-            if (coverHeight == 0) return // 若未加载出图片则返回
+        val minTopMargin = (miniPlayerHeight - minCoverHeight) / 2F  // 最小化 cover 的顶部 margin
+        val minLeftMargin = 0.1F * miniPlayerHeight // 左边 margin
 
-            val minTopMargin = (miniPlayerHeight - minCoverHeight) / 2F  // 最小化 cover 的顶部 margin
-            val minLeftMargin = 0.1F * miniPlayerHeight // 左边 margin
+        val minScale = minCoverHeight.toFloat() / coverHeight // 使封面宽高到达最小的 scale 因子
 
-            val minScale = minCoverHeight.toFloat() / coverHeight // 使封面宽高到达最小的 scale 因子
+        // (1 - t) * C + t * A 当 slide offset 约为 0 时结果为 minScale, 约为 1 时结果也为 1, 作用是限定 cover 的尺寸
+        // 也可以使用其他非线性的公式, 会更灵动
+        var scale = (1 - slideOffset) * minScale + slideOffset
+        val k = COVER_SCALE_K * slideOffset * slideOffset - COVER_SCALE_K * slideOffset + 1
+        scale *= k
 
-            // (1 - t) * C + t * A 当 slide offset 约为 0 时结果为 minScale, 约为 1 时结果也为 1, 作用是限定 cover 的尺寸
-            // 也可以使用其他非线性的公式, 会更灵动
-            var scale = (1 - slideOffset) * minScale + slideOffset
-            val k = COVER_SCALE_K * slideOffset * slideOffset - COVER_SCALE_K * slideOffset + 1
-            scale *= k
+        scaleX = scale
+        scaleY = scale
 
-            scaleX = scale
-            scaleY = scale
+        /*
+        以 bottom sheet behavior 的 **左上角** 为参考系:
 
-            /*
-            以 bottom sheet behavior 的 **左上角** 为参考系:
+            a : 右上角, c : 左下角
+            []
 
-                a : 右上角, c : 左下角
-                []
+                b : 右上角, d : 左下角
+                -------------
+                |           |
+                |   cover   |
+                |           |
+                |           |
+                -------------
+         */
+        val pivotPoint = getIntersectionPoint( // 求完全展开和完全收缩的方形对应的点(用于计算 pivot)
+            Point(
+                minLeftMargin + minScale * coverHeight,
+                minTopMargin
+            ), // a - coverHeight 其实是 coverWidth, 两者等大
+            Point(right.toFloat(), top.toFloat()), // b
+            Point(minLeftMargin, minTopMargin + minScale * coverHeight), // c
+            Point(left.toFloat(), bottom.toFloat()) // d
+        ) // 此处得到的坐标并不是以 cover 的左上角为原点, 需要再计算
 
-                    b : 右上角, d : 左下角
-                    -------------
-                    |           |
-                    |   cover   |
-                    |           |
-                    |           |
-                    -------------
-             */
-            val pivotPoint = getIntersectionPoint( // 求完全展开和完全收缩的方形对应的点(用于计算 pivot)
-                Point(
-                    minLeftMargin + minScale * coverHeight,
-                    minTopMargin
-                ), // a - coverHeight 其实是 coverWidth, 两者等大
-                Point(right.toFloat(), top.toFloat()), // b
-                Point(minLeftMargin, minTopMargin + minScale * coverHeight), // c
-                Point(left.toFloat(), bottom.toFloat()) // d
-            ) // 此处得到的坐标并不是以 cover 的左上角为原点, 需要再计算
-
-            pivotPoint?.let {
-                val pivot = Point(pivotPoint.x - left, pivotPoint.y - top)
-                pivotX = pivot.x
-                pivotY = pivot.y
-            }
+        pivotPoint?.let {
+            val pivot = Point(pivotPoint.x - left, pivotPoint.y - top)
+            pivotX = pivot.x
+            pivotY = pivot.y
         }
     }
 
@@ -424,25 +402,29 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             return
         }
 
-        if (pair != null)
-            when (pair.first) {
-                Fragments.LISTEN_NOW -> twoClicksToExit()
+        if (pair == null) {
+            twoClicksToExit()
+            return
+        }
 
-                else -> binding.hostView.getActiveHost()?.popFragment(
-                    R.anim.fade_in,
-                    R.anim.right_exit
-                )
-            }
+        when (pair.first) {
+            Fragments.LISTEN_NOW -> twoClicksToExit()
+
+            else -> binding.hostView.getActiveHost()?.popFragment(
+                R.anim.fade_in,
+                R.anim.right_exit
+            )
+        }
     }
 
     // 双击退出应用的逻辑
     private fun twoClicksToExit() {
-        val time = System.currentTimeMillis() - lastBackPressedTimeSet
+        val time = System.currentTimeMillis() - mainViewModel.lastBackPressedTimeSet
 
         if (time <= TWO_PRESSES_TO_EXIT_APP_TIME) {
             finishAffinity()
         } else {
-            lastBackPressedTimeSet = System.currentTimeMillis()
+            mainViewModel.lastBackPressedTimeSet = System.currentTimeMillis()
             toast("再次点击退出")
         }
     }
