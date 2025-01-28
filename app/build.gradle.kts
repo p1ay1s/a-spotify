@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.zephyr.base)
     implementation(project(":spotify-remote"))
     implementation(project(":util"))
+    implementation(project(":spotify-objs"))
     implementation(libs.google.gson)
     implementation(libs.retrofit)
 

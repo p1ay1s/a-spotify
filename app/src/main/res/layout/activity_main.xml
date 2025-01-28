@@ -5,8 +5,8 @@
     <data>
 
         <variable
-            name="viewModel"
-            type="com.niki.app.SpotifyRemote" />
+            name="playerApi"
+            type="com.niki.spotify_objs.PlayerApi" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -53,7 +53,7 @@
                     android:ellipsize="marquee"
                     android:gravity="start|center_vertical"
                     android:maxLines="1"
-                    android:text="@{viewModel.trackName + ` · ` + viewModel.artistName}"
+                    android:text="@{playerApi.trackName + ` · ` + playerApi.artistName}"
                     android:textColor="@color/contrast"
                     android:textSize="18sp"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -67,7 +67,7 @@
                     android:layout_width="0dp"
                     android:layout_height="1dp"
                     android:clickable="true"
-                    android:onClick="@{() -> viewModel.switchState()}"
+                    android:onClick="@{() -> playerApi.switchState()}"
                     android:padding="4dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_play"
@@ -83,7 +83,7 @@
                     android:layout_width="0dp"
                     android:layout_height="1dp"
                     android:clickable="true"
-                    android:onClick="@{() -> viewModel.next()}"
+                    android:onClick="@{() -> playerApi.next()}"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_next"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -111,7 +111,7 @@
                 android:ellipsize="marquee"
                 android:gravity="start|center_vertical"
                 android:maxLines="1"
-                android:text="@{viewModel.trackName}"
+                android:text="@{playerApi.trackName}"
                 android:textColor="@color/white_transparent"
                 android:textSize="23sp"
                 app:layout_constraintEnd_toEndOf="@id/cover"
@@ -127,7 +127,7 @@
                 android:ellipsize="marquee"
                 android:gravity="start|center_vertical"
                 android:maxLines="1"
-                android:text="@{viewModel.artistName}"
+                android:text="@{playerApi.artistName}"
                 android:textColor="#50ffffff"
                 android:textSize="23sp"
                 app:layout_constraintEnd_toEndOf="@id/cover"
@@ -176,7 +176,7 @@
                 android:id="@+id/previous"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:onClick="@{() -> viewModel.previous()}"
+                android:onClick="@{() -> playerApi.previous()}"
                 android:padding="5dp"
                 android:src="@drawable/ic_previous"
                 app:layout_constraintBottom_toBottomOf="@id/play"
@@ -189,7 +189,7 @@
                 android:id="@+id/play"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:onClick="@{() -> viewModel.switchState()}"
+                android:onClick="@{() -> playerApi.switchState()}"
                 android:padding="5dp"
                 android:src="@drawable/ic_play"
                 app:layout_constraintEnd_toStartOf="@id/next"
@@ -201,7 +201,7 @@
                 android:id="@+id/next"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:onClick="@{() -> viewModel.next()}"
+                android:onClick="@{() -> playerApi.next()}"
                 android:padding="5dp"
                 android:src="@drawable/ic_next"
                 app:layout_constraintBottom_toBottomOf="@id/play"

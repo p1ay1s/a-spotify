@@ -10,6 +10,7 @@ import com.niki.app.util.BitmapCachePool
 import com.niki.app.util.ItemCachePool
 import com.niki.app.util.LowBitmapCachePool
 import com.niki.app.util.vibrator
+import com.niki.spotify_objs.RemoteManager
 import com.zephyr.base.appBaseUrl
 import com.zephyr.base.appContext
 import com.zephyr.base.extension.toast
@@ -22,7 +23,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         appContext = this
-        SpotifyRemote.connectSpotify()
+        RemoteManager.connectSpotify()
 
         appBaseUrl = "https://accounts.spotify.com/"
         // appBaseUrl = "https://api.spotify.com/v1/"

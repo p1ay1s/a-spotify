@@ -37,3 +37,4 @@ rootProject.name = "a-spotify"
 include(":app")
 include(":spotify-remote")
 include(":util")
+include(":spotify-objs")

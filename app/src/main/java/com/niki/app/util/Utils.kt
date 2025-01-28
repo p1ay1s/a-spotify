@@ -4,13 +4,14 @@ import android.content.Context
 import android.os.Vibrator
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.niki.app.R
 import com.niki.app.song.SongFragment
 import com.niki.app.ui.LoadingDialog
+import com.niki.spotify_objs.log
+import com.niki.spotify_objs.toLogString
 import com.spotify.protocol.types.ImageUri
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.TAG
@@ -46,12 +47,6 @@ const val ITEM_POOL_INIT_SIZE = 20
 fun LifecycleOwner.toastM(msg: String) {
     lifecycleScope.launch(Dispatchers.Main) { msg.toast() }
 }
-
-suspend fun <T> MutableLiveData<T?>.checkAndSet(value: T?) =
-    withContext(Dispatchers.Main) {
-        if (value != this@checkAndSet.value && value != null)
-            this@checkAndSet.value = value
-    }
 
 val noChildListItem: ListItem
     get() = ListItem(
@@ -92,13 +87,6 @@ fun String.parseSpotifyId(): ContentType {
     }
 }
 
-fun Throwable.log(tag: String) {
-    logE(tag, toLogString())
-}
-
-fun Throwable.toLogString(): String {
-    return "${message}\n${cause}\n${stackTraceToString()}"
-}
 
 suspend fun Semaphore.withPermit(block: suspend () -> Unit) = withContext(Dispatchers.IO) {
     acquire() // 获取信号量

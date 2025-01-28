@@ -1,7 +1,7 @@
 package com.niki.app.listen_now.ui
 
 import androidx.recyclerview.widget.RecyclerView
-import com.niki.app.SpotifyRemote
+import com.niki.app.ChildrenContentManager
 import com.niki.app.databinding.ItemPlaylistCollectionBinding
 import com.niki.app.interfaces.OnClickListener
 import com.niki.app.util.LOAD_BATCH_SIZE
@@ -77,7 +77,7 @@ class PlaylistCollectionAdapter :
         if (isFetching || data == null)
             return
         isFetching = true
-        SpotifyRemote.getChildrenOfItem(data, offset, LOAD_BATCH_SIZE) { list ->
+        ChildrenContentManager.getChildrenOfItem(data, offset, LOAD_BATCH_SIZE) { list ->
             if (list == null) {
                 return@getChildrenOfItem
             }

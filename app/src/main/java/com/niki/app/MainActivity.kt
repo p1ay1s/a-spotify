@@ -3,7 +3,6 @@ package com.niki.app
 import android.annotation.SuppressLint
 import android.graphics.drawable.TransitionDrawable
 import android.os.Build
-import android.os.Vibrator
 import android.view.View
 import android.widget.SeekBar
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +19,8 @@ import com.niki.app.util.CLIENT_ID
 import com.niki.app.util.Fragments
 import com.niki.app.util.REDIRECT_URI
 import com.niki.app.util.appLoadingDialog
+import com.niki.spotify_objs.PlayerApi
+import com.niki.spotify_objs.RemoteManager
 import com.niki.util.Point
 import com.niki.util.getIntersectionPoint
 import com.niki.util.loadRadiusBitmap
@@ -35,6 +36,7 @@ import com.zephyr.base.extension.setSize
 import com.zephyr.base.extension.showStatusBar
 import com.zephyr.base.extension.toast
 import com.zephyr.vbclass.ViewBindingActivity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -105,7 +107,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         setSizes()
 
-        viewModel = SpotifyRemote
+        playerApi = PlayerApi
         lifecycleOwner = this@MainActivity
 
         seekbar.setOnSeekBarChangeListener(OnSeekListenerImpl())
@@ -142,12 +144,14 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             }
         }
 
-        SpotifyRemote.run {
-            isConnected.observe(this@MainActivity) {
-                floatButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
-            }
+        RemoteManager.isConnected.observe(this@MainActivity) {
+            if (it)
+                PlayerApi.startListen()
+            floatButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
+        }
 
-            // 图片加载
+        // 图片加载
+        PlayerApi.run {
             coverUrl.observe(this@MainActivity) {
                 loadLargeImage(it) { bitmap ->
                     checkAndResetCover()
@@ -169,15 +173,21 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 miniPlay.setImageResource(res)
             }
 
-            // seekbar 进度
-            progress.observe(this@MainActivity) {
-                if (mainViewModel.allowAutoSetProgress)
-                    seekbar.progress = it
-            }
-
             // seekbar 加载中
             isLoading.observe(this@MainActivity) {
                 seekbar.isLoading = it
+            }
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            while (true) {
+                if (mainViewModel.allowAutoSetProgress) {
+                    val progress = getSeekBarProgress()
+//                    withContext(Dispatchers.Main) { TODO 试试
+                    seekbar.progress = progress
+//                    }
+                }
+                delay(50)
             }
         }
 
@@ -324,7 +334,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            SpotifyRemote.run {
+            PlayerApi.run {
                 val percent = mainViewModel.notedProgress / SEEKBAR_MAX
                 val time = (percent * duration.value!!).toLong()
                 seekTo(time)

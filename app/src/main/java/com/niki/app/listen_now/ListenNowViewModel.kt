@@ -3,8 +3,12 @@ package com.niki.app.listen_now
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.niki.app.SpotifyRemote
+import androidx.lifecycle.viewModelScope
+import com.niki.spotify_objs.ContentApi
+import com.niki.spotify_objs.RemoteManager
 import com.spotify.protocol.types.ListItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ListenNowViewModel : ViewModel() {
 
@@ -21,7 +25,7 @@ class ListenNowViewModel : ViewModel() {
     init {
         lastExitTime = System.currentTimeMillis()
 
-        SpotifyRemote.isConnected.observeForever {
+        RemoteManager.isConnected.observeForever {
             if (it) fetch()
         }
     }
@@ -29,8 +33,10 @@ class ListenNowViewModel : ViewModel() {
     fun fetch() {
         if (isFetching) return
         isFetching = true
-        SpotifyRemote.getContentList { list ->
-            _contentList.value = list
+        ContentApi.getContentList { list ->
+            viewModelScope.launch(Dispatchers.Main) {
+                list?.let { _contentList.value = it }
+            }
             isFetching = false
         }
     }

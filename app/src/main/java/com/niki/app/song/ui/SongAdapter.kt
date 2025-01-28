@@ -1,10 +1,10 @@
 package com.niki.app.song.ui
 
 import android.view.View
+import com.niki.app.databinding.ItemSongBinding
+import com.niki.app.loadSmallImage
 import com.niki.app.util.ContentType
 import com.niki.app.util.ListItemCallback
-import com.niki.app.SpotifyRemote
-import com.niki.app.databinding.ItemSongBinding
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootHeight
@@ -65,7 +65,7 @@ class SongAdapter(private val type: ContentType) :
         } else {
             songDetails.visibility = View.VISIBLE
             songDetails.text = data.subtitle
-            SpotifyRemote.loadSmallImage(data.imageUri.raw!!) { bitmap ->
+            loadSmallImage(data.imageUri.raw!!) { bitmap ->
                 root.context.loadRadiusBitmap(bitmap, cover)
             }
         }

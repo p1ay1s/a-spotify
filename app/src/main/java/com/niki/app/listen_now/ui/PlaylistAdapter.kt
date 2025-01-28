@@ -2,11 +2,12 @@ package com.niki.app.listen_now.ui
 
 import android.view.View
 import androidx.core.view.marginEnd
-import com.niki.app.util.ContentType
-import com.niki.app.util.ListItemCallback
-import com.niki.app.SpotifyRemote
+import com.niki.app.ChildrenContentManager
 import com.niki.app.databinding.ItemPlaylistBinding
 import com.niki.app.interfaces.OnClickListener
+import com.niki.app.loadLargeImage
+import com.niki.app.util.ContentType
+import com.niki.app.util.ListItemCallback
 import com.niki.app.util.parseSpotifyId
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
@@ -52,7 +53,7 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
         val type = data.id.parseSpotifyId()
 
         data.imageUri.raw?.let {
-            SpotifyRemote.loadLargeImage(it) { bitmap ->
+            loadLargeImage(it) { bitmap ->
                 val radius = if (type == ContentType.ARTIST) Int.MAX_VALUE else RADIUS
                 root.context.loadRadiusBitmap(bitmap, cover, radius)
             }
@@ -73,6 +74,6 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
             false
         }
 
-        SpotifyRemote.preCacheChildren(data)
+        ChildrenContentManager.preCacheChildren(data)
     }
 }

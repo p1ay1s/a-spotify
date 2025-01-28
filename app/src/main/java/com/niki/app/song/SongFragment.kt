@@ -2,8 +2,8 @@ package com.niki.app.song
 
 import android.widget.LinearLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.FragmentListItemBinding
+import com.niki.app.loadLargeImage
 import com.niki.app.song.ui.SongAdapter
 import com.niki.app.util.ContentType
 import com.niki.app.util.ItemCachePool
@@ -15,6 +15,8 @@ import com.niki.app.util.parseSpotifyId
 import com.niki.app.util.showItemInfoDialog
 import com.niki.app.util.toastM
 import com.niki.app.util.vibrator
+import com.niki.spotify_objs.ContentApi
+import com.niki.spotify_objs.PlayerApi
 import com.niki.util.toBlurDrawable
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addLineDecoration
@@ -61,7 +63,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
 
     override fun FragmentListItemBinding.initBinding() {
         if (item.id.parseSpotifyId() == ContentType.ALBUM)
-            SpotifyRemote.loadLargeImage(item.imageUri.raw!!) { bitmap ->
+            loadLargeImage(item.imageUri.raw!!) { bitmap ->
                 requireActivity().toBlurDrawable(bitmap) {
                     root.background = it
                 }
@@ -74,7 +76,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
                     if (!item.playable) {
                         toastM("playable = false")
                     } else if (!item.hasChildren) {
-                        SpotifyRemote.playItemAtIndex(
+                        PlayerApi.playItemAtIndex(
                             this@SongFragment.item, // 此 item 应为歌单列表 item
                             position
                         )
@@ -146,7 +148,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             return
         }
 
-        SpotifyRemote.getChildrenOfItem(
+        ContentApi.getChildrenOfItem(
             item,
             currentOffset,
             LOAD_BATCH_SIZE

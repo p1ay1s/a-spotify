@@ -2,7 +2,6 @@ package com.niki.app.listen_now
 
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
-import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.FragmentListenNowBinding
 import com.niki.app.interfaces.OnClickListener
 import com.niki.app.listen_now.ui.PlaylistCollectionAdapter
@@ -10,6 +9,7 @@ import com.niki.app.util.PRE_LOAD_NUM
 import com.niki.app.util.openSongFragment
 import com.niki.app.util.showItemInfoDialog
 import com.niki.app.util.vibrator
+import com.niki.spotify_objs.PlayerApi
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.TAG
 import com.zephyr.base.extension.addOnLoadMoreListener_V
@@ -56,7 +56,7 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
                 vibrator?.vibrate(25L)
                 openSongFragment(item) { success ->
                     if (item.playable && !success) // 当 item 可播放并且无法打开歌单 fragment 时播放它
-                        SpotifyRemote.play(item)
+                        PlayerApi.play(item)
                     viewmodel.isOpening = false
                 }
             }
