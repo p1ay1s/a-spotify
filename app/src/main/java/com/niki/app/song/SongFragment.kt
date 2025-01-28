@@ -1,17 +1,26 @@
-package com.niki.app
+package com.niki.app.song
 
 import android.widget.LinearLayout
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.FragmentListItemBinding
-import com.niki.app.ui.SongAdapter
+import com.niki.app.song.ui.SongAdapter
+import com.niki.app.util.ContentType
+import com.niki.app.util.ItemCachePool
+import com.niki.app.util.LOAD_BATCH_SIZE
+import com.niki.app.util.PRE_LOAD_NUM
+import com.niki.app.util.noChildListItem
+import com.niki.app.util.openSongFragment
+import com.niki.app.util.parseSpotifyId
+import com.niki.app.util.showItemInfoDialog
+import com.niki.app.util.toastM
+import com.niki.app.util.vibrator
 import com.niki.util.toBlurDrawable
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addLineDecoration
 import com.zephyr.base.extension.addOnLoadMoreListener_V
 import com.zephyr.base.ui.PreloadLayoutManager
 import com.zephyr.vbclass.ViewBindingFragment
-import kotlinx.coroutines.launch
 
 class SongFragment(private val item: ListItem, private var listener: Listener?) :
     ViewBindingFragment<FragmentListItemBinding>() {
@@ -46,6 +55,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             } else {
                 listener?.onError(Exception(ERROR_MSG))
             }
+            listener = null
         }
     }
 
@@ -71,7 +81,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
                     } else {
                         if (isOpening) return
                         isOpening = true
-                        openNewListItemFragment(item) { success ->
+                        openSongFragment(item) { success ->
                             if (!success) toastM("未知错误")
                             isOpening = false
                         }
@@ -80,7 +90,7 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
 
                 override fun onLongClicked(item: ListItem) {
                     vibrator?.vibrate(25L)
-                    requireActivity().showItemInfo(item)
+                    requireActivity().showItemInfoDialog(item)
                 }
             })
         }
@@ -100,10 +110,10 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             }
         }
 
-        loadInitialData()
+        loadInitialDataToAdapter()
     }
 
-    private fun loadInitialData() {
+    private fun loadInitialDataToAdapter() {
         if (items.isEmpty()) {
             fetchData { success ->
                 if (success) {
@@ -136,33 +146,31 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             return
         }
 
-        lifecycleScope.launch {
-            SpotifyRemote.getChildrenOfItemS(
-                item,
-                currentOffset,
-                LOAD_BATCH_SIZE
-            ) { newItems ->
-                if (!isResumed && items.isNotEmpty()) {
-                    // Fragment 不在前台且已有数据，忽略新数据
-                    isFetching = false
-                    return@getChildrenOfItemS
-                }
-
-                if (newItems == null) {
-                    callback(false)
-                    return@getChildrenOfItemS
-                }
-
-                if (newItems.isNotEmpty()) {
-                    currentOffset += newItems.size
-                    items += newItems
-                    ItemCachePool.cache(item.id, items.toMutableList())
-                    callback(true)
-                } else {
-                    callback(false)
-                }
+        SpotifyRemote.getChildrenOfItem(
+            item,
+            currentOffset,
+            LOAD_BATCH_SIZE
+        ) { newItems ->
+            if (!isResumed && items.isNotEmpty()) {
+                // Fragment 不在前台且已有数据，忽略新数据
                 isFetching = false
+                return@getChildrenOfItem
             }
+
+            if (newItems == null) {
+                callback(false)
+                return@getChildrenOfItem
+            }
+
+            if (newItems.isNotEmpty()) {
+                currentOffset += newItems.size
+                items += newItems
+                ItemCachePool.cache(item.id, items.toMutableList())
+                callback(true)
+            } else {
+                callback(false)
+            }
+            isFetching = false
         }
     }
 }

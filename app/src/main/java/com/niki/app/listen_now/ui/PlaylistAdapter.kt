@@ -1,13 +1,13 @@
-package com.niki.app.ui
+package com.niki.app.listen_now.ui
 
 import android.view.View
 import androidx.core.view.marginEnd
-import com.niki.app.ContentType
-import com.niki.app.ListItemCallback
+import com.niki.app.util.ContentType
+import com.niki.app.util.ListItemCallback
 import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.ItemPlaylistBinding
 import com.niki.app.interfaces.OnClickListener
-import com.niki.app.parseSpotifyId
+import com.niki.app.util.parseSpotifyId
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootWidth

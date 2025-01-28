@@ -1,13 +1,12 @@
-package com.niki.app.ui
+package com.niki.app.listen_now.ui
 
-import android.view.View
 import androidx.recyclerview.widget.RecyclerView
-import com.niki.app.LOAD_BATCH_SIZE
-import com.niki.app.ListItemCallback
-import com.niki.app.PRE_LOAD_NUM
 import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.ItemPlaylistCollectionBinding
 import com.niki.app.interfaces.OnClickListener
+import com.niki.app.util.LOAD_BATCH_SIZE
+import com.niki.app.util.ListItemCallback
+import com.niki.app.util.PRE_LOAD_NUM
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addOnLoadMoreListener_H
 import com.zephyr.base.extension.getRootHeight
@@ -24,7 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class CollectionAdapter :
+class PlaylistCollectionAdapter :
     ViewBindingListAdapter<ItemPlaylistCollectionBinding, ListItem>(ListItemCallback()) {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -43,19 +42,9 @@ class CollectionAdapter :
         private const val MARGIN_TOP_PERCENT = 0.05
     }
 
-    override fun submitList(list: List<ListItem?>?) {
-        val l = list?.toMutableList()
-        l?.add(null) // 插入一条空数据使得最后的有效 item 不会被挡住
-        super.submitList(l?.toList())
-    }
-
     override fun ItemPlaylistCollectionBinding.onBindViewHolder(data: ListItem?, position: Int) {
-        if (data == null) {
-            root.visibility = View.INVISIBLE
+        if (data == null)
             return
-        } else {
-            root.visibility = View.VISIBLE
-        }
 
         val h = (root.context.getRootHeight() * MARGIN_TOP_PERCENT).toInt()
 
@@ -114,7 +103,7 @@ class CollectionAdapter :
 
             withContext(Dispatchers.Main) {
                 submitList(filteredItems) {
-                    pendingRemovals.remove(item) // 在提交成功后移除该项
+//                    pendingRemovals.remove(item) // 在提交成功后移除该项
                     logE(TAG, "空数据 ${item.title} 已移除")
                 }
             }

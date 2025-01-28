@@ -6,6 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.niki.app.net.AuthModel
 import com.niki.app.net.SpotifyModel
+import com.niki.app.util.appAccess
+import com.niki.app.util.appLastSet
+import com.niki.app.util.appRefresh
 import com.zephyr.base.extension.TAG
 import com.zephyr.base.log.logE
 import com.zephyr.util.getValue
@@ -60,7 +63,8 @@ class NetViewModel : ViewModel() {
         if (isRefreshingTokens)
             return
         isRefreshingTokens = true
-        authModel.refreshToken(appRefresh,
+        authModel.refreshToken(
+            appRefresh,
             {
                 val access = it?.accessToken
                 val refresh = it?.refreshToken

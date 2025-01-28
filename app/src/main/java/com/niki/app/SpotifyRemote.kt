@@ -4,6 +4,16 @@ package com.niki.app
 import android.graphics.Bitmap
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.niki.app.util.BitmapCachePool
+import com.niki.app.util.CLIENT_ID
+import com.niki.app.util.ItemCachePool
+import com.niki.app.util.LOAD_BATCH_SIZE
+import com.niki.app.util.LowBitmapCachePool
+import com.niki.app.util.REDIRECT_URI
+import com.niki.app.util.checkAndSet
+import com.niki.app.util.log
+import com.niki.app.util.noChildListItem
+import com.niki.app.util.withPermit
 import com.niki.util.getPlaceholderBitmap
 import com.spotify.android.appremote.api.ConnectionParams
 import com.spotify.android.appremote.api.Connector
@@ -26,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.ref.WeakReference
 import java.util.concurrent.Semaphore
 
 /**
@@ -58,9 +69,12 @@ object SpotifyRemote : Connector.ConnectionListener {
 
     private val scope by lazy { CoroutineScope(Dispatchers.IO) }
     private var keepConnectionJob: Job? = null // 定时检查 remote 可用性的 job
-    private val preCacheSemaphore = Semaphore(4) // 最多并发获取的内容数量上限
-    private val ongoingRequests = mutableMapOf<ListItem, MutableList<(List<ListItem>?) -> Unit>>()
-    private val lock = Any()
+
+    private val preCacheSemaphore = Semaphore(3) // 最多并发获取的内容数量上限
+    private val getChildrenSemaphore = Semaphore(3) // 最多并发获取的内容数量上限
+    private val ongoingRequests =
+        mutableMapOf<ListItem, MutableList<WeakCallback<List<ListItem>?>>>()
+    private val preCacheLock = Any()
 
     // 播放器参数
     // {
@@ -166,7 +180,7 @@ object SpotifyRemote : Connector.ConnectionListener {
         remote?.playerApi?.subscribeToPlayerState()?.setEventCallback { state ->
             scope.launch(Dispatchers.Main) {
                 _isPaused.checkAndSet(state.isPaused) // 是否暂停
-                _playbackPosition.checkAndSet(state.playbackPosition) // 播放位置（毫秒）失效...
+                _playbackPosition.checkAndSet(state.playbackPosition) // 播放位置-毫秒
                 _playbackSpeed.checkAndSet(state.playbackSpeed) // 播放速度
 
                 _isLoading.checkAndSet(state.isLoading())
@@ -266,6 +280,7 @@ object SpotifyRemote : Connector.ConnectionListener {
     fun preCacheChildren(item: ListItem) {
         scope.launch(Dispatchers.IO) {
             preCacheSemaphore.withPermit {
+//                if (!isActive)
                 val startTime = System.currentTimeMillis()
                 val items = async {
                     getChildrenOfItem(item, 0, LOAD_BATCH_SIZE)
@@ -274,8 +289,12 @@ object SpotifyRemote : Connector.ConnectionListener {
                 val timeSpent = (System.currentTimeMillis() - startTime) / 1000.0
 
                 if (items.isEmpty()) {
-                    logE(TAG, "${item.title} 被标记为空, 用时 $timeSpent s")
-                    ItemCachePool.cache(item.id, mutableListOf(noChildListItem))
+                    if (timeSpent > 5)
+                        logE(TAG, "${item.title} 用时过长 ($timeSpent s), 不标记")
+                    else {
+                        logE(TAG, "${item.title} 被标记为空, 用时 $timeSpent s")
+                        ItemCachePool.cache(item.id, mutableListOf(noChildListItem))
+                    }
                 } else {
                     logE(TAG, "${item.title} 被缓存, 用时: $timeSpent s")
                     ItemCachePool.cache(item.id, items.toMutableList())
@@ -285,44 +304,48 @@ object SpotifyRemote : Connector.ConnectionListener {
     }
 
 
-    private fun getContents(callback: (ListItems) -> Unit) {
+    private fun getContents(callback: (ListItems?) -> Unit) {
         remote?.contentApi?.getRecommendedContentItems(ContentApi.ContentType.DEFAULT) // 使用不同的 type 得到的结果似乎是相同的
-            ?.setResultCallback { callback(it) }
+            ?.setResultCallback { callback(it) }?.setErrorCallback { callback(null) } ?: callback(
+            null
+        )
     }
 
     fun getContentList(callback: (List<ListItem>) -> Unit) {
         getContents {
             val list = mutableListOf<ListItem>()
-            it.items.forEach { item -> // 直接 toList 貌似不行
+            it?.items?.forEach { item -> // 直接 toList 貌似不行
                 list.add(item)
             }
-            callback(list)
+            callback(list.toList())
         }
     }
 
     /**
      * 挂起方法
      */
-    suspend fun getChildrenOfItemS(
+    fun getChildrenOfItem(
         item: ListItem,
         offset: Int = 0,
         size: Int = LOAD_BATCH_SIZE,
         callback: (List<ListItem>?) -> Unit
-    ) = withContext(Dispatchers.IO) {
-        synchronized(lock) {
+    ) = scope.launch(Dispatchers.IO) {
+        synchronized(preCacheLock) {
             // 如果当前已有请求正在处理中, 直接添加回调并返回
             if (ongoingRequests.containsKey(item)) {
-                ongoingRequests[item]?.add(callback)
-                return@withContext
+                ongoingRequests[item]?.add(WeakCallback(callback))
+                return@launch
             }
 
             // 第一次请求, 初始化回调列表, 并且继续获取
-            ongoingRequests[item] = mutableListOf(callback)
+            ongoingRequests[item] = mutableListOf(WeakCallback(callback))
         }
 
-        val list = getChildrenOfItem(item, offset, size)
-        withContext(Dispatchers.Main) {
-            notifyCallbacks(item, list)
+        getChildrenSemaphore.withPermit {
+            val list = getChildrenOfItem(item, offset, size)
+            withContext(Dispatchers.Main) {
+                notifyCallbacks(item, list)
+            }
         }
     }
 
@@ -333,7 +356,7 @@ object SpotifyRemote : Connector.ConnectionListener {
      *
      * 当返回空 list 则表示获取成功但无数据, 如果返回空则表示错误
      */
-    fun getChildrenOfItem(
+    private fun getChildrenOfItem(
         item: ListItem,
         offset: Int = 0,
         size: Int = LOAD_BATCH_SIZE
@@ -359,47 +382,11 @@ object SpotifyRemote : Connector.ConnectionListener {
     }
 
     /**
-     * 异步方法
-     */
-    fun getChildrenOfItem(
-        item: ListItem,
-        offset: Int = 0,
-        size: Int = LOAD_BATCH_SIZE,
-        callback: (List<ListItem>?) -> Unit
-    ) {
-        synchronized(lock) {
-            // 如果当前已有请求正在处理中, 直接添加回调并返回
-            if (ongoingRequests.containsKey(item)) {
-                ongoingRequests[item]?.add(callback)
-                return
-            }
-
-            // 第一次请求, 初始化回调列表, 并且继续获取
-            ongoingRequests[item] = mutableListOf(callback)
-        }
-
-        remote?.contentApi
-            ?.getChildrenOfItem(item, size, offset)
-            ?.setResultCallback { listItems ->
-                val list = listItems.items.toList()
-                notifyCallbacks(item, list)
-            }
-            ?.setErrorCallback {
-                if (it.isSpotifyError())
-                    notifyCallbacks(item, emptyList())
-                else {
-                    it.log(TAG)
-                    notifyCallbacks(item, null)
-                }
-            }
-    }
-
-    /**
      * 通知所有回调, 并清理集合
      */
     private fun notifyCallbacks(item: ListItem, result: List<ListItem>?) {
-        val callbacks: List<(List<ListItem>?) -> Unit>
-        synchronized(lock) {
+        val callbacks: List<WeakCallback<List<ListItem>?>>
+        synchronized(preCacheLock) {
             // 获取所有待通知的回调
             callbacks = ongoingRequests.remove(item) ?: emptyList()
         }
@@ -421,4 +408,12 @@ private val SPOTIFY_ERROR_MESSAGES = listOf(
 
 fun Throwable.isSpotifyError(): Boolean {
     return (message in SPOTIFY_ERROR_MESSAGES || this is SpotifyAppRemoteException)
+}
+
+class WeakCallback<T>(callback: (T?) -> Unit) {
+    private val reference = WeakReference(callback)
+
+    fun invoke(result: T?) {
+        reference.get()?.invoke(result)
+    }
 }

@@ -1,8 +1,8 @@
-package com.niki.app.ui
+package com.niki.app.song.ui
 
 import android.view.View
-import com.niki.app.ContentType
-import com.niki.app.ListItemCallback
+import com.niki.app.util.ContentType
+import com.niki.app.util.ListItemCallback
 import com.niki.app.SpotifyRemote
 import com.niki.app.databinding.ItemSongBinding
 import com.niki.util.loadRadiusBitmap

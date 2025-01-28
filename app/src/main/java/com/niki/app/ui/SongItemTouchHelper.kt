@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.niki.app.R
+import com.niki.app.song.ui.SongAdapter
 import com.spotify.protocol.types.ListItem
 
 class SongItemTouchHelper(

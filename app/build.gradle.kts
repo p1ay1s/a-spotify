@@ -82,4 +82,5 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(kotlin("reflect"))
 }

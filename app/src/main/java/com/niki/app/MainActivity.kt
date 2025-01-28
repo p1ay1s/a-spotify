@@ -16,6 +16,10 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.niki.app.databinding.ActivityMainBinding
 import com.niki.app.listen_now.ListenNowFragment
 import com.niki.app.ui.LoadingDialog
+import com.niki.app.util.CLIENT_ID
+import com.niki.app.util.Fragments
+import com.niki.app.util.REDIRECT_URI
+import com.niki.app.util.appLoadingDialog
 import com.niki.util.Point
 import com.niki.util.getIntersectionPoint
 import com.niki.util.loadRadiusBitmap
@@ -33,8 +37,6 @@ import com.zephyr.base.extension.toast
 import com.zephyr.vbclass.ViewBindingActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-var vibrator: Vibrator? = null
 
 @SuppressLint("SetTextI18n")
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {

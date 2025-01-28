@@ -1,12 +1,15 @@
-package com.niki.app
+package com.niki.app.util
 
 import android.content.Context
+import android.os.Vibrator
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.niki.app.R
+import com.niki.app.song.SongFragment
 import com.niki.app.ui.LoadingDialog
 import com.spotify.protocol.types.ImageUri
 import com.spotify.protocol.types.ListItem
@@ -32,8 +35,13 @@ var appAccess = ""
 var appRefresh = ""
 var appLastSet = 0L
 var appLoadingDialog: LoadingDialog? = null
+var vibrator: Vibrator? = null
 
 const val NO_CHILD_SIGNAL = "NO_CHILD_SIGNAL"
+
+const val LOW_BITMAP_POOL_INIT_SIZE = 120
+const val BITMAP_POOL_INIT_SIZE = 60
+const val ITEM_POOL_INIT_SIZE = 20
 
 fun LifecycleOwner.toastM(msg: String) {
     lifecycleScope.launch(Dispatchers.Main) { msg.toast() }
@@ -85,7 +93,11 @@ fun String.parseSpotifyId(): ContentType {
 }
 
 fun Throwable.log(tag: String) {
-    logE(tag, "${message}\n${cause}\n${stackTraceToString()}")
+    logE(tag, toLogString())
+}
+
+fun Throwable.toLogString(): String {
+    return "${message}\n${cause}\n${stackTraceToString()}"
 }
 
 suspend fun Semaphore.withPermit(block: suspend () -> Unit) = withContext(Dispatchers.IO) {
@@ -101,11 +113,11 @@ suspend fun Semaphore.withPermit(block: suspend () -> Unit) = withContext(Dispat
     }
 }
 
-fun Fragment.openNewListItemFragment(item: ListItem, callback: (Boolean) -> Unit) {
+fun Fragment.openSongFragment(item: ListItem, callback: (Boolean) -> Unit) {
     appLoadingDialog?.show()
     SongFragment(item, object : SongFragment.Listener {
         override fun onFetched(fragment: SongFragment) {
-            appLoadingDialog?.dismiss()
+            appLoadingDialog?.hide()
             openNewFragment(item.id, fragment)
             lifecycleScope.launch(Dispatchers.Main) {
                 delay(500) // 避免同时打开几个
@@ -114,10 +126,10 @@ fun Fragment.openNewListItemFragment(item: ListItem, callback: (Boolean) -> Unit
         }
 
         override fun onError(e: Exception) {
-            appLoadingDialog?.dismiss()
+            appLoadingDialog?.hide()
             e.log(TAG)
             if (e.message != SongFragment.ERROR_MSG)
-                requireActivity().showThrowableInfo(e)
+                requireActivity().showThrowableInfoDialog(e)
             callback(false)
         }
     })
@@ -133,17 +145,17 @@ fun Fragment.openNewFragment(tag: String, clazz: Class<out Fragment>) {
     openNewFragment(tag, clazz.getDeclaredConstructor().newInstance())
 }
 
-fun Context.showThrowableInfo(throwable: Throwable) {
+fun Context.showThrowableInfoDialog(throwable: Throwable) {
     MaterialAlertDialogBuilder(this)
         .setTitle(throwable.message)
-        .setMessage("${throwable.cause}\n${throwable.stackTraceToString()}")
+        .setMessage(throwable.toLogString())
         .setCancelable(false)
         .setPositiveButton("确认") { _, _ ->
         }.create()
         .show()
 }
 
-fun Context.showItemInfo(item: ListItem) {
+fun Context.showItemInfoDialog(item: ListItem) {
     MaterialAlertDialogBuilder(this)
         .setTitle(item.title)
         .setMessage("${item.subtitle}\nchildren: ${item.hasChildren}\nid: ${item.id}\nplayable: ${item.playable}")
