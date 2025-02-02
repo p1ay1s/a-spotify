@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit
 
 val spotifyScope by lazy { CoroutineScope(Dispatchers.IO) }
 
+
 fun isOnMain(): Boolean {
     return Thread.currentThread().name.lowercase() == "main"
 }
@@ -23,21 +24,49 @@ fun isOnMain(): Boolean {
 /**
  * 若在主线程执行则抛出异常
  */
-fun checkThread() {
+fun doNotRunThisOnMain() {
     if (isOnMain())
         throw Exception("don't run this on Main")
 }
+
 
 fun logS(msg: String) {
     logE(SPOTIFY_REMOTE_TAG, msg)
 }
 
+fun Throwable.log(tag: String = "") {
+    logE(tag, toLogString())
+}
+
+fun Throwable.logS() {
+    log(SPOTIFY_REMOTE_TAG)
+}
+
+fun Throwable.toLogString(): String {
+    return "${message}\n${cause}\n${stackTraceToString()}"
+}
+
+fun Throwable.isSpotifyError(): Boolean {
+    return (message in SPOTIFY_ERROR_MESSAGES || this is SpotifyAppRemoteException)
+}
+
+/**
+ * 自定参数
+ */
+fun ListItem.hasChild(): Boolean = when {
+    !id.startsWith("spotify:") -> false
+    id.startsWith("spotify:track:") -> false
+    !playable || hasChildren -> true
+    else -> true
+}
+
 /**
  * 许多 api 对 list item 处理都是直接拿出 id, 所以做这个方法
  */
-fun String.createListItem(): ListItem {
-    return ListItem(this, "", ImageUri(""), "", "", true, true)
+fun createListItem(id: String): ListItem {
+    return ListItem(id, "", ImageUri(""), "", "", true, true)
 }
+
 
 /**
  * 同步获取数据
@@ -48,8 +77,12 @@ fun <T> CallResult<T>.get(timeout: Long? = null): T? {
     else
         await(timeout, TimeUnit.MILLISECONDS)
 
-    if (!await.isSuccessful)
-        await.error.logS()
+    if (!await.isSuccessful) {
+        val error = await.error
+        if (error.isSpotifyError())
+            logS("spotify error")
+        error.logS()
+    }
 
     return await.data
 }
@@ -67,10 +100,13 @@ fun <T> CallResult<T>.get(callback: (T?) -> Unit) {
     setErrorCallback {
         if (isCalled) return@setErrorCallback
         isCalled = true
+        if (it.isSpotifyError())
+            logS("spotify error")
         it.logS()
         callback(null)
     }
 }
+
 
 // 直接对 items toList 貌似不行
 fun ListItems.toList(): List<ListItem> {
@@ -88,22 +124,6 @@ fun <T> MutableLiveData<T?>.checkAndSet(value: T?) = spotifyScope.launch {
     checkAndSetS(value)
 }
 
-fun Throwable.log(tag: String = "") {
-    logE(tag, toLogString())
-}
-
-fun Throwable.logS() {
-    log(SPOTIFY_REMOTE_TAG)
-}
-
-fun Throwable.toLogString(): String {
-    return "${message}\n${cause}\n${stackTraceToString()}"
-}
-
 fun PlayerState.isLoading(): Boolean {
     return (playbackSpeed <= 0 && !isPaused && playbackPosition <= 80)
-}
-
-fun Throwable.isSpotifyError(): Boolean {
-    return (message in SPOTIFY_ERROR_MESSAGES || this is SpotifyAppRemoteException)
 }

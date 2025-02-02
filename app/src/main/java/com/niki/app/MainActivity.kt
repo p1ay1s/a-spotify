@@ -15,11 +15,13 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.niki.app.databinding.ActivityMainBinding
 import com.niki.app.listen_now.ListenNowFragment
 import com.niki.app.ui.LoadingDialog
-import com.niki.app.util.CLIENT_ID
 import com.niki.app.util.Fragments
-import com.niki.app.util.REDIRECT_URI
 import com.niki.app.util.appLoadingDialog
+import com.niki.app.util.getSeekBarProgress
+import com.niki.app.util.loadLargeImage
+import com.niki.spotify_objs.CLIENT_ID
 import com.niki.spotify_objs.PlayerApi
+import com.niki.spotify_objs.REDIRECT_URI
 import com.niki.spotify_objs.RemoteManager
 import com.niki.util.Point
 import com.niki.util.getIntersectionPoint
@@ -28,6 +30,7 @@ import com.niki.util.toBlurDrawable
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
+import com.zephyr.base.extension.TAG
 import com.zephyr.base.extension.getScreenHeight
 import com.zephyr.base.extension.getScreenWidth
 import com.zephyr.base.extension.hideStatusBar
@@ -35,6 +38,7 @@ import com.zephyr.base.extension.setMargins
 import com.zephyr.base.extension.setSize
 import com.zephyr.base.extension.showStatusBar
 import com.zephyr.base.extension.toast
+import com.zephyr.base.log.logE
 import com.zephyr.vbclass.ViewBindingActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -44,8 +48,6 @@ import kotlinx.coroutines.launch
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     companion object {
-        private const val RADIUS = 35
-
         private const val SEEKBAR_SCALE = 15.0 // 进度条的细腻程度, 越大越细腻
 
         const val SEEKBAR_MAX = SEEKBAR_SCALE * 17
@@ -155,7 +157,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             coverUrl.observe(this@MainActivity) {
                 loadLargeImage(it) { bitmap ->
                     checkAndResetCover()
-                    loadRadiusBitmap(bitmap, cover, RADIUS)
+                    loadRadiusBitmap(bitmap, cover, 35)
                     toBlurDrawable(bitmap) { blurDrawable ->
                         val transitionDrawable =
                             TransitionDrawable(arrayOf(player.background, blurDrawable))
@@ -217,7 +219,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         cover.setSize((0.7 * parentWidth).toInt())
         cover.setMargins(top = (0.17 * parentHeight).toInt())
-        songName.setMargins(top = (0.02 * parentHeight).toInt())
+        trackName.setMargins(top = (0.02 * parentHeight).toInt())
         seekbar.setMargins(top = (0.02 * parentHeight).toInt())
         play.setMargins(top = (0.1 * parentHeight).toInt())
 
@@ -339,7 +341,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 val time = (percent * duration.value!!).toLong()
                 seekTo(time)
                 lifecycleScope.launch {
-                    delay(100)
+                    delay(170)
                     mainViewModel.allowAutoSetProgress = true // 缓冲一下, 以免闪烁
                 }
             }
@@ -422,10 +424,13 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         when (pair.first) {
             Fragments.LISTEN_NOW -> twoClicksToExit()
 
-            else -> binding.hostView.getActiveHost()?.popFragment(
-                R.anim.fade_in,
-                R.anim.right_exit
-            )
+            else -> {
+                val success = binding.hostView.getActiveHost()?.popFragment(
+                    R.anim.fade_in,
+                    R.anim.right_exit
+                )
+                logE(TAG, "pop fragment result: $success")
+            }
         }
     }
 

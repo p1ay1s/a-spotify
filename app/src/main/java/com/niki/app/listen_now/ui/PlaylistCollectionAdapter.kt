@@ -1,10 +1,8 @@
 package com.niki.app.listen_now.ui
 
 import androidx.recyclerview.widget.RecyclerView
-import com.niki.app.ChildrenContentManager
 import com.niki.app.databinding.ItemPlaylistCollectionBinding
 import com.niki.app.interfaces.OnClickListener
-import com.niki.app.util.LOAD_BATCH_SIZE
 import com.niki.app.util.ListItemCallback
 import com.niki.app.util.PRE_LOAD_NUM
 import com.spotify.protocol.types.ListItem
@@ -55,10 +53,6 @@ class PlaylistCollectionAdapter :
 
         val playlistAdapter = PlaylistAdapter()
 
-        playlistAdapter.setOnClickListener(listener)
-
-        playlistAdapter.fetchDatas(data)
-
         val preloadLayoutManager =
             PreloadLayoutManager(root.context, RecyclerView.HORIZONTAL, PRE_LOAD_NUM)
 
@@ -68,30 +62,20 @@ class PlaylistCollectionAdapter :
             adapter = playlistAdapter
             layoutManager = preloadLayoutManager
             addOnLoadMoreListener_H(1) {
-                playlistAdapter.fetchDatas(data)
+                playlistAdapter.fetchDatas {
+                    if (it) removeItemSafely(data)
+                    root.requestLayout()
+                }
             }
         }
-    }
 
-    private fun PlaylistAdapter.fetchDatas(data: ListItem?) {
-        if (isFetching || data == null)
-            return
-        isFetching = true
-        ChildrenContentManager.getChildrenOfItem(data, offset, LOAD_BATCH_SIZE) { list ->
-            if (list == null) {
-                return@getChildrenOfItem
+        playlistAdapter.run {
+            setListItem(data)
+            playlistAdapter.setOnClickListener(listener)
+            fetchDatas {
+                if (it) removeItemSafely(data)
+                root.requestLayout()
             }
-
-            if (list.isNotEmpty()) {
-                offset += list.size
-                submitList(list)
-            } else {
-                if (currentList.isEmpty()) {
-                    removeItemSafely(data)
-                }
-                logE(TAG, "${data.title} 加载完毕")
-            }
-            isFetching = false
         }
     }
 

@@ -9,7 +9,7 @@ import com.spotify.protocol.types.ImageUri
 object ImageApi {
 
     fun loadImage(uri: String, size: Image.Dimension? = null): Bitmap {
-        checkThread()
+        doNotRunThisOnMain()
         val errorBitmap = getPlaceholderBitmap(0)
         val bitmap = if (size != null)
             remote?.imagesApi?.getImage(ImageUri(uri), size)?.get()

@@ -2,9 +2,10 @@ package com.niki.app.song.ui
 
 import android.view.View
 import com.niki.app.databinding.ItemSongBinding
-import com.niki.app.loadSmallImage
+import com.niki.app.interfaces.OnClickListener
 import com.niki.app.util.ContentType
 import com.niki.app.util.ListItemCallback
+import com.niki.app.util.loadSmallImage
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootHeight
@@ -19,14 +20,10 @@ class SongAdapter(private val type: ContentType) :
         private const val MARGIN_TOP_PERCENT = 0.05
     }
 
-    interface Listener {
-        fun onClicked(item: ListItem, position: Int)
-        fun onLongClicked(item: ListItem)
-    }
+    lateinit var parentItem: ListItem
+    private var listener: OnClickListener? = null
 
-    private var listener: Listener? = null
-
-    fun setListener(l: Listener?) {
+    fun setListener(l: OnClickListener?) {
         listener = l
     }
 
@@ -51,7 +48,7 @@ class SongAdapter(private val type: ContentType) :
             }
 
             setOnLongClickListener {
-                listener?.onLongClicked(data)
+                listener?.onLongClicked(data, parentItem)
                 false // 若 true -> 还会触发 onclick
             }
 
@@ -70,10 +67,10 @@ class SongAdapter(private val type: ContentType) :
             }
         }
 
-        songName.text = data.title
+        trackName.text = data.title
 
         more.setOnClickListener {
-            listener?.onLongClicked(data)
+            listener?.onLongClicked(data, parentItem)
         }
     }
 }

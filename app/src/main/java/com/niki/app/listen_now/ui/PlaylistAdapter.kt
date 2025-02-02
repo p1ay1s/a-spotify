@@ -2,13 +2,15 @@ package com.niki.app.listen_now.ui
 
 import android.view.View
 import androidx.core.view.marginEnd
-import com.niki.app.ChildrenContentManager
 import com.niki.app.databinding.ItemPlaylistBinding
 import com.niki.app.interfaces.OnClickListener
-import com.niki.app.loadLargeImage
 import com.niki.app.util.ContentType
 import com.niki.app.util.ListItemCallback
+import com.niki.app.util.SongRepository
+import com.niki.app.util.SpotifyChildrenLoader
+import com.niki.app.util.loadLargeImage
 import com.niki.app.util.parseSpotifyId
+import com.niki.app.util.runOnMain
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootWidth
@@ -18,10 +20,15 @@ import com.zephyr.vbclass.ui.ViewBindingListAdapter
 
 class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(ListItemCallback()) {
 
-    var isFetching = false
-    var offset = 0
+    private val repository: SongRepository by lazy { SongRepository() }
 
+    private lateinit var playlistItem: ListItem
     private var listener: OnClickListener? = null
+
+    fun setListItem(item: ListItem) {
+        this.playlistItem = item
+        repository.item = item
+    }
 
     fun setOnClickListener(l: OnClickListener?) {
         listener = l
@@ -31,6 +38,15 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
         private const val WIDTH_PERCENT = 0.4
 
         private const val RADIUS = 33
+    }
+
+    init {
+        repository.list.observeForever { list ->
+            runOnMain {
+                if (list.isNotEmpty())
+                    submitList(list)
+            }
+        }
     }
 
     override fun ItemPlaylistBinding.onBindViewHolder(data: ListItem?, position: Int) {
@@ -66,14 +82,26 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
         }
 
         root.setOnClickListener {
-            listener?.onClicked(data)
+            listener?.onClicked(data, position)
         }
 
         root.setOnLongClickListener {
-            listener?.onLongClicked(data)
+            listener?.onLongClicked(data, playlistItem)
             false
         }
 
-        ChildrenContentManager.preCacheChildren(data)
+        SpotifyChildrenLoader.preCacheChildren(data)
+    }
+
+    /**
+     * 返回值用于触发删除
+     */
+    fun fetchDatas(callback: (Boolean) -> Unit) {
+        repository.loadData { isHasChildren ->
+            if (repository.currentOffset == 0 && !isHasChildren)
+                callback(true)
+            else
+                callback(false)
+        }
     }
 }

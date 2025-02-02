@@ -6,9 +6,9 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Vibrator
 import android.os.VibratorManager
-import com.niki.app.util.BitmapCachePool
-import com.niki.app.util.ItemCachePool
-import com.niki.app.util.LowBitmapCachePool
+import com.niki.app.util.cache_pool.BitmapCachePool
+import com.niki.app.util.cache_pool.ListItemCachePool
+import com.niki.app.util.cache_pool.LowBitmapCachePool
 import com.niki.app.util.vibrator
 import com.niki.spotify_objs.RemoteManager
 import com.zephyr.base.appBaseUrl
@@ -65,7 +65,7 @@ class App : Application() {
                 "内存 - 应少占用".toast()
                 LowBitmapCachePool.trim(60)
                 BitmapCachePool.trim(50)
-                ItemCachePool.trim(70)
+                ListItemCachePool.trim(70)
             }
 
             Level.MODERATE -> {
@@ -73,7 +73,7 @@ class App : Application() {
                 "内存 - 需要释放".toast()
                 LowBitmapCachePool.trimTo(40)
                 BitmapCachePool.trimTo(20)
-                ItemCachePool.trim(10)
+                ListItemCachePool.trim(10)
             }
 
             Level.CRITICAL -> {
@@ -81,7 +81,7 @@ class App : Application() {
                 "内存 - 严重不足".toast()
                 LowBitmapCachePool.clear()
                 BitmapCachePool.clear()
-                ItemCachePool.clear()
+                ListItemCachePool.clear()
             }
         }
     }

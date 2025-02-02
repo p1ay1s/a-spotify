@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 open class CachePool<ID, D>(initSize: Int) {
     protected val TAG = this::class.java.simpleName
     protected val scope = CoroutineScope(Dispatchers.IO)
+    protected val lock = Any()
 
     var size: Int = -1
         get() = cachePools.size
@@ -26,7 +27,7 @@ open class CachePool<ID, D>(initSize: Int) {
         }
 
     // 使用 LinkedHashMap 并重写 removeEldestEntry 方法
-    protected val cachePools = object : LinkedHashMap<ID, D>(16, 0.75f, false) {
+    protected val cachePools = object : LinkedHashMap<ID, D>(initSize, 0.75f, false) {
 
 //        accessOrder = false (默认值)：按插入顺序维护条目顺序
 //        accessOrder = true：按访问顺序维护（LRU策略）
@@ -36,13 +37,19 @@ open class CachePool<ID, D>(initSize: Int) {
         }
     }
 
-    open fun cache(id: ID, data: D) = scope.launch(Dispatchers.IO) {
-        cachePools[id] = data
+    open fun cache(id: ID, data: D) {
+        scope.launch(Dispatchers.IO) {
+            synchronized(lock) {
+                cachePools[id] = data
+            }
+        }
     }
 
     open fun fetch(id: ID): D? {
         // 获取池时也会更新其最近使用状态
-        return cachePools[id]
+        synchronized(lock) {
+            return cachePools[id]
+        }
     }
 
     // 删减, 保留 percent% 的数据

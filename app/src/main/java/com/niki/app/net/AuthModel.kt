@@ -1,8 +1,8 @@
 package com.niki.app.net
 
-import com.niki.app.util.CLIENT_ID
-import com.niki.app.util.CLIENT_SECRET
-import com.niki.app.util.REDIRECT_URI
+import com.niki.spotify_objs.CLIENT_ID
+import com.niki.spotify_objs.CLIENT_SECRET
+import com.niki.spotify_objs.REDIRECT_URI
 import com.zephyr.util.ServiceBuilder
 import com.zephyr.util.ServiceBuilder.requestEnqueue
 import com.zephyr.util.toBase64String

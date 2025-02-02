@@ -1,98 +1,158 @@
 package com.niki.app.song
 
 import android.widget.LinearLayout
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.niki.app.databinding.FragmentListItemBinding
-import com.niki.app.loadLargeImage
+import com.niki.app.interfaces.OnClickListener
+import com.niki.app.song.SongFragment.Companion.ERROR_MSG
 import com.niki.app.song.ui.SongAdapter
 import com.niki.app.util.ContentType
-import com.niki.app.util.ItemCachePool
-import com.niki.app.util.LOAD_BATCH_SIZE
 import com.niki.app.util.PRE_LOAD_NUM
-import com.niki.app.util.noChildListItem
-import com.niki.app.util.openSongFragment
+import com.niki.app.util.SongRepository
+import com.niki.app.util.appLoadingDialog
+import com.niki.app.util.loadLargeImage
+import com.niki.app.util.openNewFragment
 import com.niki.app.util.parseSpotifyId
 import com.niki.app.util.showItemInfoDialog
 import com.niki.app.util.toastM
 import com.niki.app.util.vibrator
-import com.niki.spotify_objs.ContentApi
 import com.niki.spotify_objs.PlayerApi
+import com.niki.spotify_objs.logS
 import com.niki.util.toBlurDrawable
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addLineDecoration
 import com.zephyr.base.extension.addOnLoadMoreListener_V
 import com.zephyr.base.ui.PreloadLayoutManager
 import com.zephyr.vbclass.ViewBindingFragment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-class SongFragment(private val item: ListItem, private var listener: Listener?) :
-    ViewBindingFragment<FragmentListItemBinding>() {
+private val songFragmentLock = Any()
+private var isOpening = false
+
+fun Fragment.openSongFragment(item: ListItem, callback: (Boolean) -> Unit) =
+    synchronized(songFragmentLock) {
+        if (isOpening) return@synchronized
+        isOpening = true
+        appLoadingDialog?.show()
+        val songFragment = SongFragment()
+        songFragment.let {
+            it.setListItem(item)
+            it.listener = object : SongFragment.Listener {
+                override fun onFetched(fragment: SongFragment) =
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        appLoadingDialog?.hide()
+                        openNewFragment(item.id, fragment)
+                        callback(true)
+                        isOpening = false
+                    }
+
+                override fun onError() = lifecycleScope.launch(Dispatchers.Main) {
+                    appLoadingDialog?.hide()
+                    logS(ERROR_MSG)
+                    callback(false)
+                    isOpening = false
+                }
+            }
+            it.load()
+        }
+    }
+
+class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
 
     companion object {
-        const val ERROR_MSG = "空数据, 无法打开 SongFragment"
+        const val ERROR_MSG = "获取不到数据, 不打开 SongFragment"
     }
 
     interface Listener {
-        fun onFetched(fragment: SongFragment)
-        fun onError(e: Exception)
+        fun onFetched(fragment: SongFragment): Any
+        fun onError(): Any
     }
 
-    private var items: List<ListItem> = emptyList()
+    private val repository: SongRepository by lazy { SongRepository() }
+
+    private lateinit var item: ListItem
+    var listener: Listener? = null
+
     private lateinit var songAdapter: SongAdapter
-    private var isFetching = false
-    private var currentOffset = 0
-    private var isOpening = false
 
-    init {
-        initializeData()
+    fun setListItem(item: ListItem) {
+        this.item = item
+        repository.item = item
     }
 
-    private fun initializeData() {
+    fun load() {
         // 重置状态
-        currentOffset = 0
-        items = emptyList()
-
-        fetchData { success ->
-            if (success) {
+        repository.reset()
+        repository.loadData {
+            if (it) {
                 listener?.onFetched(this)
             } else {
-                listener?.onError(Exception(ERROR_MSG))
+                listener?.onError()
             }
             listener = null
         }
     }
 
     override fun FragmentListItemBinding.initBinding() {
-        if (item.id.parseSpotifyId() == ContentType.ALBUM)
+        if (repository.list.value.isNullOrEmpty())
+            repository.loadData { }
+
+        if (item.id.parseSpotifyId() == ContentType.ALBUM) // TODO 暂时对专辑使用模糊背景
             loadLargeImage(item.imageUri.raw!!) { bitmap ->
                 requireActivity().toBlurDrawable(bitmap) {
                     root.background = it
                 }
             }
 
-        songAdapter = SongAdapter(item.id.parseSpotifyId()).apply {
-            setListener(object : SongAdapter.Listener {
-                override fun onClicked(item: ListItem, position: Int) {
+        songAdapter = SongAdapter(item.id.parseSpotifyId())
+
+        songAdapter.apply {
+            parentItem = item
+            setListener(object : OnClickListener {
+                override fun onClicked(clickedItem: ListItem, position: Int) {
                     vibrator?.vibrate(25L)
-                    if (!item.playable) {
-                        toastM("playable = false")
-                    } else if (!item.hasChildren) {
-                        PlayerApi.playItemAtIndex(
-                            this@SongFragment.item, // 此 item 应为歌单列表 item
-                            position
-                        )
-                    } else {
-                        if (isOpening) return
-                        isOpening = true
-                        openSongFragment(item) { success ->
-                            if (!success) toastM("未知错误")
-                            isOpening = false
+                    when {
+                        clickedItem.hasChildren ->
+                            openSongFragment(clickedItem) { success ->
+                                if (!success) toastM("未知错误")
+                            }
+
+                        clickedItem.playable -> {
+                            PlayerApi.playItemAtIndex(
+                                item, // 此 item 应为歌单列表 item
+                                position
+                            )
                         }
+
+                        else ->
+                            toastM("playable = false")
                     }
                 }
 
-                override fun onLongClicked(item: ListItem) {
+                override fun onLongClicked(clickedItem: ListItem, parentItem: ListItem) {
                     vibrator?.vibrate(25L)
-                    requireActivity().showItemInfoDialog(item)
+                    requireActivity().showItemInfoDialog(clickedItem)
+//                    showSongDetail(
+//                        Song(
+//                            clickedItem.title,
+//                            clickedItem.subtitle,
+//                            parentItem.title,
+//                            clickedItem.imageUri.raw!!,
+//                            clickedItem.id,
+//                            parentItem.id,
+//                            parentItem.id
+//                        )
+//                    ) { fragment, item ->
+//                        openSongFragment(item) { success ->
+//                            if (!success)
+//                                "无法打开".toast()
+//                            else
+//                                fragment.dismiss()
+//                        }
+//                    }
                 }
             })
         }
@@ -105,74 +165,13 @@ class SongFragment(private val item: ListItem, private var listener: Listener?) 
             )
             addLineDecoration(requireActivity(), LinearLayout.VERTICAL)
             addOnLoadMoreListener_V(1) {
-                fetchData { success ->
-                    if (success)
-                        songAdapter.submitList(items.toList())
-                }
+                repository.loadData { }
             }
         }
 
-        loadInitialDataToAdapter()
-    }
-
-    private fun loadInitialDataToAdapter() {
-        if (items.isEmpty()) {
-            fetchData { success ->
-                if (success) {
-                    songAdapter.submitList(items.toList())
-                }
-            }
-        } else {
-            songAdapter.submitList(items.toList())
-        }
-    }
-
-    private fun fetchData(callback: (Boolean) -> Unit) {
-        if (isFetching) return
-        isFetching = true
-
-        // 尝试从缓存获取数据
-        val cachedItems = ItemCachePool.fetch(item.id)
-
-        if (cachedItems?.contains(noChildListItem) == true) {
-            callback(false)
-            isFetching = false
-            return
-        }
-
-        if (!cachedItems.isNullOrEmpty() && cachedItems.size > items.size) {
-            items = cachedItems
-            currentOffset = cachedItems.size
-            callback(true)
-            isFetching = false
-            return
-        }
-
-        ContentApi.getChildrenOfItem(
-            item,
-            currentOffset,
-            LOAD_BATCH_SIZE
-        ) { newItems ->
-            if (!isResumed && items.isNotEmpty()) {
-                // Fragment 不在前台且已有数据，忽略新数据
-                isFetching = false
-                return@getChildrenOfItem
-            }
-
-            if (newItems == null) {
-                callback(false)
-                return@getChildrenOfItem
-            }
-
-            if (newItems.isNotEmpty()) {
-                currentOffset += newItems.size
-                items += newItems
-                ItemCachePool.cache(item.id, items.toMutableList())
-                callback(true)
-            } else {
-                callback(false)
-            }
-            isFetching = false
+        repository.list.observe(this@SongFragment) { list ->
+            if (list.isNotEmpty())
+                songAdapter.submitList(list)
         }
     }
 }

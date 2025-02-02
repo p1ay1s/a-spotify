@@ -16,7 +16,7 @@
         android:background="@color/background">
 
         <com.zephyr.base.ui.FragmentHostView
-            android:id="@+id/hostView"
+            android:id="@+id/host_view"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_gravity="top"
@@ -40,14 +40,14 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/miniPlayer"
+                android:id="@+id/mini_player"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
 
                 <com.niki.app.ui.ScrollTextView
-                    android:id="@+id/miniSongName"
+                    android:id="@+id/mini_track_name"
                     android:layout_width="0dp"
                     android:layout_height="0dp"
                     android:ellipsize="marquee"
@@ -57,13 +57,13 @@
                     android:textColor="@color/contrast"
                     android:textSize="18sp"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@id/miniPlay"
+                    app:layout_constraintEnd_toStartOf="@id/mini_play"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintWidth_percent="0.7" />
 
                 <com.zephyr.base.ui.RippleButton
-                    android:id="@+id/miniPlay"
+                    android:id="@+id/mini_play"
                     android:layout_width="0dp"
                     android:layout_height="1dp"
                     android:clickable="true"
@@ -72,14 +72,14 @@
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_play"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@id/miniNext"
-                    app:layout_constraintStart_toEndOf="@id/miniSongName"
+                    app:layout_constraintEnd_toStartOf="@id/mini_next"
+                    app:layout_constraintStart_toEndOf="@id/mini_track_name"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintWidth_percent="0.135"
                     app:tint="@color/contrast" />
 
                 <com.zephyr.base.ui.RippleButton
-                    android:id="@+id/miniNext"
+                    android:id="@+id/mini_next"
                     android:layout_width="0dp"
                     android:layout_height="1dp"
                     android:clickable="true"
@@ -88,7 +88,7 @@
                     android:src="@drawable/ic_next"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@id/miniPlay"
+                    app:layout_constraintStart_toEndOf="@id/mini_play"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintWidth_percent="0.135"
                     app:tint="@color/contrast" />
@@ -104,7 +104,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <com.niki.app.ui.ScrollTextView
-                android:id="@+id/songName"
+                android:id="@+id/track_name"
                 android:layout_width="0dp"
                 android:layout_height="33dp"
                 android:layout_marginHorizontal="5dp"
@@ -120,7 +120,7 @@
                 app:layout_constraintTop_toBottomOf="@id/cover" />
 
             <com.niki.app.ui.ScrollTextView
-                android:id="@+id/singerName"
+                android:id="@+id/artist_name"
                 android:layout_width="0dp"
                 android:layout_height="33dp"
                 android:layout_marginHorizontal="5dp"
@@ -133,7 +133,7 @@
                 app:layout_constraintEnd_toEndOf="@id/cover"
                 app:layout_constraintHeight_percent="0.04"
                 app:layout_constraintStart_toStartOf="@id/cover"
-                app:layout_constraintTop_toBottomOf="@id/songName" />
+                app:layout_constraintTop_toBottomOf="@id/track_name" />
 
             <com.niki.app.ui.LoadingSeekbar
                 android:id="@+id/seekbar"
@@ -145,7 +145,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHeight_percent="0.02"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/singerName" />
+                app:layout_constraintTop_toBottomOf="@id/artist_name" />
 
             <TextView
                 android:id="@+id/current"
@@ -221,7 +221,7 @@
             android:translationZ="2dp" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/floatButton"
+            android:id="@+id/float_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end|bottom"
@@ -229,7 +229,7 @@
             android:visibility="invisible" />
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottomNavigation"
+            android:id="@+id/bottom_navigation"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_gravity="bottom"

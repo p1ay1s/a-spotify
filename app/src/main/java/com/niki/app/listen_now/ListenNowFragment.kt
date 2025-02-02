@@ -5,14 +5,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.niki.app.databinding.FragmentListenNowBinding
 import com.niki.app.interfaces.OnClickListener
 import com.niki.app.listen_now.ui.PlaylistCollectionAdapter
+import com.niki.app.song.openSongFragment
 import com.niki.app.util.PRE_LOAD_NUM
-import com.niki.app.util.openSongFragment
 import com.niki.app.util.showItemInfoDialog
 import com.niki.app.util.vibrator
 import com.niki.spotify_objs.PlayerApi
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.TAG
 import com.zephyr.base.extension.addOnLoadMoreListener_V
+import com.zephyr.base.extension.toast
 import com.zephyr.base.log.logE
 import com.zephyr.base.ui.PreloadLayoutManager
 import com.zephyr.vbclass.ViewBindingFragment
@@ -23,6 +24,8 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
         const val RE_FETCH_TIME = 5 * 60 * 1000 // 5 min
     }
 
+    private var lastToTopTimeSet = -1L
+
     private lateinit var collectionAdapter: PlaylistCollectionAdapter
     private lateinit var viewmodel: ListenNowViewModel
 
@@ -32,8 +35,10 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
         collectionAdapter = PlaylistCollectionAdapter()
 
         viewmodel.contentList.observe(this@ListenNowFragment) { list ->
-            viewmodel.shouldLoad = false
-            collectionAdapter.submitList(list)
+            if (list.isNotEmpty()) {
+                "已获取".toast()
+                collectionAdapter.submitList(list)
+            }
         }
 
         recyclerView.run {
@@ -43,27 +48,40 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
                 PRE_LOAD_NUM
             )
             addOnLoadMoreListener_V(-1) {
-                if (!viewmodel.shouldLoad) return@addOnLoadMoreListener_V
-                viewmodel.shouldLoad = true
-                viewmodel.fetch()
+                refresh()
             }
         }
 
         collectionAdapter.setOnClickListener(object : OnClickListener {
-            override fun onClicked(item: ListItem) {
-                if (viewmodel.isOpening) return
-                viewmodel.isOpening = true
+            override fun onClicked(clickedItem: ListItem, position: Int) {
                 vibrator?.vibrate(25L)
-                openSongFragment(item) { success ->
-                    if (item.playable && !success) // 当 item 可播放并且无法打开歌单 fragment 时播放它
-                        PlayerApi.play(item)
-                    viewmodel.isOpening = false
+                openSongFragment(clickedItem) { success ->
+                    if (clickedItem.playable && !success) // 当 item 可播放并且无法打开歌单 fragment 时播放它
+                        PlayerApi.play(clickedItem)
                 }
             }
 
-            override fun onLongClicked(item: ListItem) {
+            override fun onLongClicked(clickedItem: ListItem, parentItem: ListItem) {
                 vibrator?.vibrate(25L)
-                requireActivity().showItemInfoDialog(item)
+                requireActivity().showItemInfoDialog(clickedItem)
+//                showSongDetail(
+//                    Song(
+//                        clickedItem.title,
+//                        clickedItem.subtitle,
+//                        parentItem.title,
+//                        clickedItem.imageUri.raw!!,
+//                        clickedItem.id,
+//                        parentItem.id,
+//                        parentItem.id
+//                    )
+//                ) { fragment, item ->
+//                    openSongFragment(item) { success ->
+//                        if (!success)
+//                            "无法打开".toast()
+//                        else
+//                            fragment.dismiss()
+//                    }
+//                }
             }
         })
     }
@@ -79,5 +97,15 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
     override fun onPause() {
         super.onPause()
         viewmodel.lastExitTime = System.currentTimeMillis()
+    }
+
+    private fun refresh() {
+        val time = System.currentTimeMillis() - lastToTopTimeSet
+
+        if (time <= 1500L) {
+            viewmodel.fetch()
+        } else {
+            lastToTopTimeSet = System.currentTimeMillis()
+        }
     }
 }

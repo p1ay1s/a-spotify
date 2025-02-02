@@ -39,7 +39,7 @@ object PlayerApi {
      * 同步获取 progress 值 (0 - 100), 轮询获取
      */
     fun getProgress(): Int {
-        checkThread()
+        doNotRunThisOnMain()
         val state = getPlayerState()
         state.run {
             val progress = if (this?.track != null)
@@ -55,7 +55,7 @@ object PlayerApi {
     }
 
     fun getPlayerState(): PlayerState? {
-        checkThread()
+        doNotRunThisOnMain()
         return remote?.playerApi?.playerState?.get()
     }
 

@@ -65,6 +65,9 @@ dependencies {
 
     implementation(libs.androidx.datastore)
 
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.spotify.web.api.android)
+
     implementation(libs.androidx.constraintlayout)
 
     implementation(libs.material)
