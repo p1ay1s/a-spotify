@@ -4,8 +4,9 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.niki.app.net.AuthModel
 import com.niki.app.net.SpotifyModel
+import com.niki.app.net.auth.AuthApi
+import com.niki.app.net.request
 import com.niki.app.util.appAccess
 import com.niki.app.util.appLastSet
 import com.niki.app.util.appOFD
@@ -62,7 +63,7 @@ class NetViewModel : ViewModel() {
     private var isTokensRefreshing = false
     private var isGettingTokens = false
 
-    private val authModel = AuthModel()
+    private val authApi = AuthApi()
     private val spotifyModel = SpotifyModel()
 
 
@@ -140,53 +141,54 @@ class NetViewModel : ViewModel() {
             return
         }
 
-        authModel.refreshToken(
-            appRefresh,
-            onSuccess = { tokens ->
-                val access = tokens?.accessToken
-                val refresh = tokens?.refreshToken
+        authApi.service.refreshToken(appRefresh)
+            .request(
+                onSuccess = { tokens ->
+                    val access = tokens?.accessToken
+                    val refresh = tokens?.refreshToken
 
-                if (!access.isNullOrBlank() && !refresh.isNullOrBlank())
-                    putTokens(access, refresh)
-                else
-                    sendEffect(GetSpotifyCode)
-                logE(TAG, "get new tokens:\naccess token: $access\nrefresh token: $refresh")
-                isTokensRefreshing = false
-            },
-            onError = { code, msg ->
-                isTokensRefreshing = false
-                if (code == null)
-                    refreshTokens() // 请求失败
-                else
-                    sendEffect(TokenRequestError(code, msg))
-            }
-        )
+                    if (!access.isNullOrBlank() && !refresh.isNullOrBlank())
+                        putTokens(access, refresh)
+                    else
+                        sendEffect(GetSpotifyCode)
+                    logE(TAG, "get new tokens:\naccess token: $access\nrefresh token: $refresh")
+                    isTokensRefreshing = false
+                },
+                onError = { code, msg ->
+                    isTokensRefreshing = false
+                    if (code == null)
+                        refreshTokens() // 请求失败
+                    else
+                        sendEffect(TokenRequestError(code, msg))
+                }
+            )
     }
 
     private fun getTokensWithCode(authCode: String) {
         if (isGettingTokens)
             return
         isGettingTokens = true
-        authModel.getAccessToken(authCode,
-            { tokens ->
-                val access = tokens?.accessToken
-                val refresh = tokens?.refreshToken
+        authApi.service.getTokenWithCode(authCode)
+            .request(
+                onSuccess = { tokens ->
+                    val access = tokens?.accessToken
+                    val refresh = tokens?.refreshToken
 
-                if (!access.isNullOrBlank() && !refresh.isNullOrBlank())
-                    putTokens(access, refresh)
-                else
-                    sendEffect(GetSpotifyCode)
-                logE(TAG, "get new tokens:\naccess token: $access\nrefresh token: $refresh")
-                isGettingTokens = false
-            },
-            onError = { code, msg ->
-                isGettingTokens = false
-                if (code == null)
-                    refreshTokens() // 请求失败
-                else
-                    sendEffect(TokenRequestError(code, msg))
-            }
-        )
+                    if (!access.isNullOrBlank() && !refresh.isNullOrBlank())
+                        putTokens(access, refresh)
+                    else
+                        sendEffect(GetSpotifyCode)
+                    logE(TAG, "get new tokens:\naccess token: $access\nrefresh token: $refresh")
+                    isGettingTokens = false
+                },
+                onError = { code, msg ->
+                    isGettingTokens = false
+                    if (code == null)
+                        refreshTokens() // 请求失败
+                    else
+                        sendEffect(TokenRequestError(code, msg))
+                }
+            )
     }
 
 

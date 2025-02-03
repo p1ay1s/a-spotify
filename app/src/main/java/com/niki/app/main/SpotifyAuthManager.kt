@@ -11,9 +11,19 @@ import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
 
-class SpotifyAuthManager( var activity: AppCompatActivity?) {
+class SpotifyAuthManager(private var activity: AppCompatActivity?) {
     private var isWorking = false
     private var authCallback: ((ActivityResult) -> Unit)? = null
+    private var launcher: ActivityResultLauncher<Intent>? = null
+
+    init {
+        launcher = activity?.registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            authCallback?.invoke(result)
+            isWorking = false
+        }
+    }
 
     fun setCallback(callback: ((ActivityResult) -> Unit)?) {
         authCallback = callback
@@ -23,8 +33,9 @@ class SpotifyAuthManager( var activity: AppCompatActivity?) {
      * 释放引用
      */
     fun release() {
-        activity = null
+        launcher = null
         authCallback = null
+        activity = null
         isWorking = false
     }
 
@@ -35,17 +46,9 @@ class SpotifyAuthManager( var activity: AppCompatActivity?) {
         if (isWorking) return
         isWorking = true
         val intent = buildAuthRequest()
-        getLauncher()?.launch(intent) ?: { isWorking = false }
+        launcher?.launch(intent) ?: { isWorking = false }
     }
 
-    private fun getLauncher(): ActivityResultLauncher<Intent>? {
-        return activity?.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            authCallback?.invoke(result)
-            isWorking = false
-        }
-    }
 
     private fun buildAuthRequest(): Intent {
         val builder = AuthorizationRequest.Builder(

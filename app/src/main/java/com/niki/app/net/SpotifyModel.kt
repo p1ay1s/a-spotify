@@ -1,6 +1,6 @@
 package com.niki.app.net
 
-import com.niki.app.net.new.SpotifyApi
+import com.niki.app.net.web_api.SpotifyApi
 import com.niki.spotify_objs.logS
 import com.zephyr.util.net.ServiceBuilder
 import com.zephyr.util.net.handleResult

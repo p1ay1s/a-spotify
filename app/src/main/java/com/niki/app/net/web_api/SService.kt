@@ -1,4 +1,4 @@
-package com.niki.app.net.new
+package com.niki.app.net.web_api
 
 //import kaaes.spotify.webapi.android.annotations.DELETEWITHBODY
 //import kaaes.spotify.webapi.android.models.Album
