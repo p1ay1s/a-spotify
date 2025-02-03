@@ -22,7 +22,7 @@ android {
 
     buildFeatures {
         dataBinding = true
-        compose = true
+//        compose = true
     }
 
     buildTypes {
@@ -53,38 +53,26 @@ android {
 
 dependencies {
     implementation(libs.auth)
+    implementation(libs.spotify.web.api.android)
+    implementation(project(":spotify-objs"))
+    implementation(project(":spotify-remote"))
+
+    implementation(project(":util"))
+
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.datastore)
+    implementation(libs.material)
+
     implementation(libs.zephyr.vbclass)
     implementation(libs.zephyr.util)
     implementation(libs.zephyr.base)
-    implementation(project(":spotify-remote"))
-    implementation(project(":util"))
-    implementation(project(":spotify-objs"))
-    implementation(libs.google.gson)
+
+    implementation("com.squareup.retrofit:retrofit:1.9.0") // 后面移除
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+
     implementation(libs.retrofit)
+    implementation(libs.google.gson)
 
-    implementation(libs.androidx.datastore)
-
-    implementation(libs.androidx.fragment.ktx)
-    implementation(libs.spotify.web.api.android)
-
-    implementation(libs.androidx.constraintlayout)
-
-    implementation(libs.material)
-
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.activity)
-
-    testImplementation(libs.junit)
-
-    androidTestImplementation(libs.runner)
-    androidTestImplementation(libs.espresso.core)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
-    implementation(kotlin("reflect"))
+//    implementation("androidx.compose.compiler:compiler:1.5.1")
+//    implementation("androidx.compose.runtime:runtime:1.5.1")
 }

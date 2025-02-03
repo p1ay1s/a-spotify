@@ -22,9 +22,18 @@ import kotlinx.coroutines.withTimeout
 
 const val PRE_LOAD_NUM = 10
 
+@Volatile
 var appAccess = ""
+
+@Volatile
 var appRefresh = ""
+
+@Volatile
+var appOFD = 3600L
+
+@Volatile
 var appLastSet = 0L
+
 var appLoadingDialog: LoadingDialog? = null
 var vibrator: Vibrator? = null
 
@@ -84,19 +93,19 @@ fun Fragment.openNewFragment(tag: String, fragment: Fragment) {
 }
 
 fun Context.showThrowableInfoDialog(throwable: Throwable) {
-    MaterialAlertDialogBuilder(this)
-        .setTitle(throwable.message)
-        .setMessage(throwable.toLogString())
-        .setCancelable(false)
-        .setPositiveButton("确认") { _, _ ->
-        }.create()
-        .show()
+    showMDDialog(throwable.message ?: "", throwable.toLogString())
 }
 
 fun Context.showItemInfoDialog(item: ListItem) {
+    val msg =
+        ("${item.subtitle}\n\nid: ${item.id}\n\nuri: ${item.uri}\n\nhasChildren: ${item.hasChildren}\n\nplayable: ${item.playable}")
+    showMDDialog(item.title, msg)
+}
+
+fun Context.showMDDialog(title: String, msg: String) {
     MaterialAlertDialogBuilder(this)
-        .setTitle(item.title)
-        .setMessage("${item.subtitle}\n\nid: ${item.id}\n\nuri: ${item.uri}\n\nhasChildren: ${item.hasChildren}\n\nplayable: ${item.playable}")
+        .setTitle(title)
+        .setMessage(msg)
         .setCancelable(true)
         .setPositiveButton("确认") { _, _ ->
         }.create()

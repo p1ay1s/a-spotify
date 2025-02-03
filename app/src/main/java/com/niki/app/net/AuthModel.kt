@@ -3,8 +3,9 @@ package com.niki.app.net
 import com.niki.spotify_objs.CLIENT_ID
 import com.niki.spotify_objs.CLIENT_SECRET
 import com.niki.spotify_objs.REDIRECT_URI
-import com.zephyr.util.ServiceBuilder
-import com.zephyr.util.ServiceBuilder.requestEnqueue
+import com.zephyr.util.net.ServiceBuilder
+import com.zephyr.util.net.handleResult
+import com.zephyr.util.net.requestEnqueue
 import com.zephyr.util.toBase64String
 
 class AuthModel {
@@ -18,13 +19,10 @@ class AuthModel {
         crossinline onSuccess: (TokenResponse?) -> Unit,
         crossinline onError: (Int?, String) -> Unit
     ) {
-        requestEnqueue(
-            authService.getAccessToken(
-                code = code,
-                redirectUri = REDIRECT_URI,
-                authorization = base64Credentials
-            ), onSuccess, onError
-        )
+        authService.getAccessToken("authorization_code", code, REDIRECT_URI, base64Credentials)
+            .requestEnqueue {
+                it.handleResult(onSuccess, onError)
+            }
     }
 
     inline fun refreshToken(
@@ -32,13 +30,9 @@ class AuthModel {
         crossinline onSuccess: (TokenResponse?) -> Unit,
         crossinline onError: (Int?, String) -> Unit
     ) {
-        requestEnqueue(
-            authService.refreshToken(
-                refreshToken = refreshToken,
-                authorization = base64Credentials
-            ),
-            onSuccess,
-            onError
-        )
+        authService.refreshToken("refresh_token", refreshToken, base64Credentials)
+            .requestEnqueue {
+                it.handleResult(onSuccess, onError)
+            }
     }
 }

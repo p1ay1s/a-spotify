@@ -1,7 +1,7 @@
 package com.niki.app.util
 
 import android.graphics.Bitmap
-import com.niki.app.MainActivity
+import com.niki.app.main.MainActivity
 import com.niki.app.util.cache_pool.BitmapCachePool
 import com.niki.app.util.cache_pool.LowBitmapCachePool
 import com.niki.spotify_objs.ImageApi

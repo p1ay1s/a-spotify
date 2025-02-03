@@ -8,6 +8,7 @@ import com.niki.app.net.AuthModel
 import com.niki.app.net.SpotifyModel
 import com.niki.app.util.appAccess
 import com.niki.app.util.appLastSet
+import com.niki.app.util.appOFD
 import com.niki.app.util.appRefresh
 import com.zephyr.base.extension.TAG
 import com.zephyr.base.log.logE
@@ -15,118 +16,206 @@ import com.zephyr.util.getValue
 import com.zephyr.util.putValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
+sealed class NetEffect
+sealed class NetIntent
+
+data object GetSpotifyCode : NetEffect()
+class TokenRequestError(val code: Int, val msg: String) : NetEffect()
+data object TokensRefreshed : NetEffect() // 成功刷新 token
+
+class GetTokensWithCode(val code: String) : NetIntent()
+data object RequireRefreshTokens : NetIntent()
+
+/**
+ * 使用 mvi 架构, 专用于处理有关 spotify 的请求
+ *
+ * 没有实现 state 相关部分, 因为网络请求使用 effect 和 intent 基本可以满足需求
+ */
 class NetViewModel : ViewModel() {
     companion object {
-        const val KEY_ACCESS_TOKEN = "access_token"
-        const val KEY_REFRESH_TOKEN = "refresh_token"
-        const val KEY_LAST_TOKEN_SET = "last_token_set"
+        private const val KEY_ACCESS_TOKEN = "access_token"
+        private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_OFD = "out_of_date"
+        private const val KEY_LAST_TOKEN_SET = "last_token_set"
 
-        const val TOKEN_NETWORK_PROBLEM = 0
-        const val TOKEN_OK = 1
-        const val TOKEN_FAILED = 2
+        private val prefAccessToken = stringPreferencesKey(KEY_ACCESS_TOKEN)
+        private val prefRefreshToken = stringPreferencesKey(KEY_REFRESH_TOKEN)
+        private val prefOFD = longPreferencesKey(KEY_OFD)
+        private val prefLastTokenSet = longPreferencesKey(KEY_LAST_TOKEN_SET)
     }
 
-    private var isRefreshingTokens = false
-    private var isGettingTokens = false
+    private var autoRefreshTokensJob: Job? = null
+    private var putTokensMutex = Mutex()
 
-    private var watchTokensJob: Job? = null
+    private var isTokensRefreshing = false
+    private var isGettingTokens = false
 
     private val authModel = AuthModel()
     private val spotifyModel = SpotifyModel()
 
-    private val prefAccessToken = stringPreferencesKey(KEY_ACCESS_TOKEN)
-    private val prefRefreshToken = stringPreferencesKey(KEY_REFRESH_TOKEN)
-    private val prefLastTokenSet = longPreferencesKey(KEY_LAST_TOKEN_SET)
 
-    fun checkTokens(callback: (Int) -> Unit) {
+    // { MVI 样板代码
+    private val mviChannel = Channel<NetIntent>(Channel.UNLIMITED)
+
+    private val _effectFlow = MutableSharedFlow<NetEffect>()
+    val uiEffectFlow: SharedFlow<NetEffect> by lazy { _effectFlow.asSharedFlow() }
+
+    init { // 启动 channel 收集
+        loadPrefs {
+            startWatchTokenDateJob()
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            appLastSet = prefLastTokenSet.getValue(0L)!!
-
-            appAccess = prefAccessToken.getValue("")!!
-            appRefresh = prefRefreshToken.getValue("")!!
-
-            if (appRefresh.isNotBlank()) {
-                if (System.currentTimeMillis() - appLastSet <= 60 * 60 * 1000)
-                    callback(TOKEN_OK)
-                else
-                    refreshTokens { callback(it) }
-            } else {
-                callback(TOKEN_FAILED)
+            mviChannel.consumeAsFlow().collect { intent ->
+                logE(TAG, "接受 intent: ${intent::class.java.simpleName}")
+                handleIntent(intent)
             }
         }
     }
 
-    private fun refreshTokens(callback: (Int) -> Unit) {
-        if (isRefreshingTokens)
+    /**
+     * channel 收集到后处理 intent
+     */
+    private fun handleIntent(intent: NetIntent) {
+        when (intent) {
+            is GetTokensWithCode -> getTokensWithCode(intent.code)
+            RequireRefreshTokens -> refreshTokens()
+        }
+    }
+
+    /**
+     * view 通过 effect 向 view model 层发送数据
+     */
+    fun sendIntent(intent: NetIntent) = viewModelScope.launch(Dispatchers.IO) {
+        logE(TAG, "发送 intent: ${intent::class.java.simpleName}")
+        mviChannel.send(intent)
+    }
+
+    /**
+     * view model 通过 effect 向 view 层发送数据
+     */
+    private fun sendEffect(effect: NetEffect) = viewModelScope.launch(Dispatchers.IO) {
+        logE(TAG, "发送 effect: ${effect::class.java.simpleName}")
+        _effectFlow.emit(effect)
+    }
+    // }
+
+    private fun loadPrefs(callback: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            loadPrefs().await()
+            callback()
+        }
+    }
+
+    private suspend fun loadPrefs() = coroutineScope {
+        async {
+            appLastSet = prefLastTokenSet.getValue(0L)!!
+            appOFD = prefOFD.getValue(3600L)!!
+            appAccess = prefAccessToken.getValue("")!!
+            appRefresh = prefRefreshToken.getValue("")!!
+        }
+    }
+
+    /**
+     * 发送 refresh tokens error
+     */
+    private fun refreshTokens() {
+        if (isTokensRefreshing)
             return
-        isRefreshingTokens = true
+        isTokensRefreshing = true
+
+        if (appRefresh.isBlank()) {
+            sendEffect(GetSpotifyCode)
+            return
+        }
+
         authModel.refreshToken(
             appRefresh,
-            {
-                val access = it?.accessToken
-                val refresh = it?.refreshToken
-                if (access != null && refresh != null) {
+            onSuccess = { tokens ->
+                val access = tokens?.accessToken
+                val refresh = tokens?.refreshToken
+
+                if (!access.isNullOrBlank() && !refresh.isNullOrBlank())
                     putTokens(access, refresh)
-                    callback(TOKEN_OK)
-                } else {
-                    logE(TAG, access + "\n" + refresh)
-                    callback(TOKEN_FAILED)
-                }
-                isRefreshingTokens = false
-            },
-            { code, _ ->
-                if (code != null)
-                    callback(TOKEN_FAILED)
                 else
-                    callback(TOKEN_NETWORK_PROBLEM)
-                isRefreshingTokens = false
+                    sendEffect(GetSpotifyCode)
+                logE(TAG, "get new tokens:\naccess token: $access\nrefresh token: $refresh")
+                isTokensRefreshing = false
+            },
+            onError = { code, msg ->
+                isTokensRefreshing = false
+                if (code == null)
+                    refreshTokens() // 请求失败
+                else
+                    sendEffect(TokenRequestError(code, msg))
             }
         )
     }
 
-    fun getTokensWithCode(code: String, callback: ((Boolean) -> Unit) = {}) {
+    private fun getTokensWithCode(authCode: String) {
         if (isGettingTokens)
             return
         isGettingTokens = true
-        authModel.getAccessToken(code,
-            {
-                val access = it?.accessToken
-                val refresh = it?.refreshToken
-                if (access != null && refresh != null) {
+        authModel.getAccessToken(authCode,
+            { tokens ->
+                val access = tokens?.accessToken
+                val refresh = tokens?.refreshToken
+
+                if (!access.isNullOrBlank() && !refresh.isNullOrBlank())
                     putTokens(access, refresh)
-                    callback(true)
-                } else {
-                    callback(false)
-                }
+                else
+                    sendEffect(GetSpotifyCode)
+                logE(TAG, "get new tokens:\naccess token: $access\nrefresh token: $refresh")
                 isGettingTokens = false
             },
-            { c, _ ->
-                if (c != null) callback(false)
+            onError = { code, msg ->
                 isGettingTokens = false
+                if (code == null)
+                    refreshTokens() // 请求失败
+                else
+                    sendEffect(TokenRequestError(code, msg))
             }
         )
     }
 
-    fun putTokens(access: String, refresh: String) {
+
+    /**
+     * 发送 token refreshed
+     */
+    private fun putTokens(access: String, refresh: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            appAccess = access
-            appRefresh = refresh
-            appLastSet = System.currentTimeMillis()
-            prefAccessToken.putValue(appAccess)
-            prefRefreshToken.putValue(appRefresh)
-            prefLastTokenSet.putValue(appLastSet)
+            putTokensMutex.withLock {
+                appAccess = access
+                appRefresh = refresh
+                appLastSet = System.currentTimeMillis()
+                prefAccessToken.putValue(appAccess)
+                prefRefreshToken.putValue(appRefresh)
+                prefOFD.putValue(appOFD)
+                prefLastTokenSet.putValue(appLastSet)
+                sendEffect(TokensRefreshed)
+            }
         }
     }
 
-    fun startWatchTokenDateJob() {
-        watchTokensJob?.cancel()
-        watchTokensJob = viewModelScope.launch(Dispatchers.IO) {
+    private fun startWatchTokenDateJob() {
+        autoRefreshTokensJob?.cancel()
+        autoRefreshTokensJob = viewModelScope.launch(Dispatchers.IO) {
             while (true) {
-                if (appRefresh.isNotBlank() && System.currentTimeMillis() - appLastSet > 60 * 60 * 1000)
-                    refreshTokens { }
+                if (System.currentTimeMillis() - appLastSet + 5000 > appOFD * 1000) {
+                    logE(TAG, "token 过期, 将刷新")
+                    refreshTokens()
+                }
                 delay(500)
             }
         }

@@ -1,7 +1,11 @@
 package com.niki.app.net
 
-import com.zephyr.util.ServiceBuilder
-import com.zephyr.util.ServiceBuilder.requestEnqueue
+import com.niki.app.net.new.SpotifyApi
+import com.niki.spotify_objs.logS
+import com.zephyr.util.net.ServiceBuilder
+import com.zephyr.util.net.handleResult
+import com.zephyr.util.net.requestEnqueue
+
 
 class SpotifyModel {
     val spotifyService: SpotifyService by lazy { ServiceBuilder.create<SpotifyService>() }
@@ -23,10 +27,44 @@ class SpotifyModel {
             return
         }
 
-        requestEnqueue(
-            spotifyService.getLyrics("Bearer $token", trackId),
-            onSuccess,
-            onError
-        )
+        spotifyService.getLyrics("Bearer $token", trackId)
+            .requestEnqueue {
+                it.handleResult(onSuccess, onError)
+            }
     }
+
+    fun a(token: String) {
+        SpotifyApi.run {
+            accessToken = token
+            logS("token is: $token")
+            service.getMe()
+                .requestEnqueue {
+//                    it.handleResult(
+//                        onSuccess = {},
+//                        onError = { _, _ -> }
+//                    )
+                }
+            service.getMyPlaylists()
+                .requestEnqueue { }
+        }
+    }
+
+//    fun a(token: String) {
+//        val api = SpotifyApi()
+//
+//
+//        api.setAccessToken(token)
+//
+//        val spotify: kaaes.spotify.webapi.android.SpotifyService = api.service
+//
+//        spotify.getAlbum("2dIGnmEIy1WZIcZCFSj6i8", object : Callback<Album?> {
+//            override fun success(t: Album?, response: Response?) {
+//                t
+//            }
+//
+//            override fun failure(error: RetrofitError?) {
+//                error
+//            }
+//        })
+//    }
 }

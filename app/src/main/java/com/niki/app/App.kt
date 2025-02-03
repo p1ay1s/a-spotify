@@ -12,7 +12,6 @@ import com.niki.app.util.cache_pool.LowBitmapCachePool
 import com.niki.app.util.vibrator
 import com.niki.spotify_objs.RemoteManager
 import com.zephyr.base.appBaseUrl
-import com.zephyr.base.appContext
 import com.zephyr.base.extension.toast
 import com.zephyr.base.log.Logger
 import com.zephyr.base.log.VERBOSE
@@ -22,13 +21,12 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        appContext = this
+        Logger.startLogger(this, VERBOSE)
+
         RemoteManager.connectSpotify()
 
         appBaseUrl = "https://accounts.spotify.com/"
         // appBaseUrl = "https://api.spotify.com/v1/"
-
-        Logger.setLogLevel(VERBOSE)
 
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator

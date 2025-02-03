@@ -108,4 +108,9 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
             lastToTopTimeSet = System.currentTimeMillis()
         }
     }
+
+    override fun onDetach() {
+        collectionAdapter.setOnClickListener(null)
+        super.onDetach()
+    }
 }

@@ -1,4 +1,4 @@
-package com.niki.app
+package com.niki.app.main
 
 import androidx.lifecycle.ViewModel
 

@@ -23,7 +23,7 @@ class SongAdapter(private val type: ContentType) :
     lateinit var parentItem: ListItem
     private var listener: OnClickListener? = null
 
-    fun setListener(l: OnClickListener?) {
+    fun setOnClickListener(l: OnClickListener?) {
         listener = l
     }
 

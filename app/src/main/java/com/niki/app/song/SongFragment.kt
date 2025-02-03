@@ -111,13 +111,19 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
 
         songAdapter.apply {
             parentItem = item
-            setListener(object : OnClickListener {
+            setOnClickListener(object : OnClickListener {
                 override fun onClicked(clickedItem: ListItem, position: Int) {
                     vibrator?.vibrate(25L)
                     when {
                         clickedItem.hasChildren ->
                             openSongFragment(clickedItem) { success ->
-                                if (!success) toastM("未知错误")
+                                if (!success)
+                                    toastM("未知错误")
+                                else
+                                    PlayerApi.playItemAtIndex(
+                                        item, // 此 item 应为歌单列表 item
+                                        position
+                                    )
                             }
 
                         clickedItem.playable -> {
@@ -173,5 +179,10 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
             if (list.isNotEmpty())
                 songAdapter.submitList(list)
         }
+    }
+
+    override fun onDetach() {
+        songAdapter.setOnClickListener(null)
+        super.onDetach()
     }
 }

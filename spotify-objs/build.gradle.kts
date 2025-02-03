@@ -35,14 +35,7 @@ android {
 dependencies {
     implementation(project(":spotify-remote"))
     implementation(project(":util"))
-
     implementation(libs.zephyr.base)
     implementation(libs.zephyr.util)
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    implementation(libs.androidx.lifecycle.livedata.core.ktx)
 }

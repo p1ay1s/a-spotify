@@ -28,7 +28,7 @@ suspend fun Fragment.showSongDetail(
     song: Song,
     callback: (BottomSheetDialogFragment, ListItem) -> Unit
 ) {
-    val fragment = SongDetailDialogFragment(song)
+    val fragment = DetailFragment(song)
     fragment.callback = callback
     withContext(Dispatchers.Main) {
         fragment.show(parentFragmentManager, "SONG_DETAIL")
@@ -36,7 +36,7 @@ suspend fun Fragment.showSongDetail(
     }
 }
 
-class SongDetailDialogFragment(private val song: Song) :
+class DetailFragment(private val song: Song) :
     ViewBindingDialogFragment<FragmentDetailBinding>() {
 
     var callback: ((BottomSheetDialogFragment, ListItem) -> Unit)? = null
@@ -52,11 +52,11 @@ class SongDetailDialogFragment(private val song: Song) :
 
         artistName.setOnClickListener {
             if (!song.artistId.startsWith("spotify:")) return@setOnClickListener
-            callback?.invoke(this@SongDetailDialogFragment, createListItem(song.artistId))
+            callback?.invoke(this@DetailFragment, createListItem(song.artistId))
         }
         albumName.setOnClickListener {
             if (!song.albumId.startsWith("spotify:")) return@setOnClickListener
-            callback?.invoke(this@SongDetailDialogFragment, createListItem(song.albumId))
+            callback?.invoke(this@DetailFragment, createListItem(song.albumId))
         }
         cover.setOnClickListener {
             if (!song.trackId.startsWith("spotify:")) return@setOnClickListener
