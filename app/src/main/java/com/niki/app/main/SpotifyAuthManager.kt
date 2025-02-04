@@ -5,8 +5,10 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.niki.spotify_objs.CLIENT_ID
-import com.niki.spotify_objs.REDIRECT_URI
+import com.niki.app.util.appLoadingDialog
+import com.niki.spotify.remote.CLIENT_ID
+import com.niki.spotify.remote.REDIRECT_URI
+import com.niki.spotify.remote.logS
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
@@ -16,12 +18,44 @@ class SpotifyAuthManager(private var activity: AppCompatActivity?) {
     private var authCallback: ((ActivityResult) -> Unit)? = null
     private var launcher: ActivityResultLauncher<Intent>? = null
 
+    private val scopes = arrayOf(
+//        "ugc-image-upload",
+        "user-read-playback-state",
+        "user-modify-playback-state",
+        "user-read-currently-playing",
+//        "app-remote-control",
+        "streaming",
+        "playlist-read-private",
+//        "playlist-read-collaborative",
+        "playlist-modify-private",
+        "playlist-modify-public",
+//        "user-follow-modify",
+//        "user-follow-read",
+        "user-read-playback-position",
+        "user-top-read",
+        "user-read-recently-played",
+        "user-library-modify",
+        "user-library-read",
+//        "user-read-email",
+//        "user-read-private",
+//        "user-soa-link",
+//        "user-soa-unlink",
+//        "soa-manage-entitlements",
+//        "soa-manage-partner",
+//        "soa-create-partner"
+    )
+
     init {
-        launcher = activity?.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            authCallback?.invoke(result)
-            isWorking = false
+        try {
+            launcher = activity?.registerForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                authCallback?.invoke(result)
+                isWorking = false
+            }
+        } catch (t: Throwable) {
+            t.logS()
+            release()
         }
     }
 
@@ -45,6 +79,7 @@ class SpotifyAuthManager(private var activity: AppCompatActivity?) {
     fun authenticate() {
         if (isWorking) return
         isWorking = true
+        appLoadingDialog?.hide()
         val intent = buildAuthRequest()
         launcher?.launch(intent) ?: { isWorking = false }
     }
@@ -52,21 +87,12 @@ class SpotifyAuthManager(private var activity: AppCompatActivity?) {
 
     private fun buildAuthRequest(): Intent {
         val builder = AuthorizationRequest.Builder(
-            CLIENT_ID,
+            com.niki.spotify.remote.CLIENT_ID,
             AuthorizationResponse.Type.CODE, // TOKEN
-            REDIRECT_URI
+            com.niki.spotify.remote.REDIRECT_URI
         )
 
-        builder.setScopes(
-            arrayOf(
-                "user-read-playback-state",
-                "user-modify-playback-state",
-                "user-read-currently-playing",
-                "streaming"
-            )
-        )
-
-        val request = builder.build()
+        val request = builder.setScopes(scopes).build()
         val intent = AuthorizationClient.createLoginActivityIntent(activity, request)
 
         return intent

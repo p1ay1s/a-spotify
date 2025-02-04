@@ -18,8 +18,8 @@ import com.niki.app.util.parseSpotifyId
 import com.niki.app.util.showItemInfoDialog
 import com.niki.app.util.toastM
 import com.niki.app.util.vibrator
-import com.niki.spotify_objs.PlayerApi
-import com.niki.spotify_objs.logS
+import com.niki.spotify.remote.PlayerApi
+import com.niki.spotify.remote.logS
 import com.niki.util.toBlurDrawable
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addLineDecoration
@@ -51,7 +51,7 @@ fun Fragment.openSongFragment(item: ListItem, callback: (Boolean) -> Unit) =
 
                 override fun onError() = lifecycleScope.launch(Dispatchers.Main) {
                     appLoadingDialog?.hide()
-                    logS(ERROR_MSG)
+                    com.niki.spotify.remote.logS(ERROR_MSG)
                     callback(false)
                     isOpening = false
                 }
@@ -117,17 +117,17 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
                     when {
                         clickedItem.hasChildren ->
                             openSongFragment(clickedItem) { success ->
-                                if (!success)
+                                if (!success) {
                                     toastM("未知错误")
-                                else
-                                    PlayerApi.playItemAtIndex(
+                                    com.niki.spotify.remote.PlayerApi.playItemAtIndex(
                                         item, // 此 item 应为歌单列表 item
                                         position
                                     )
+                                }
                             }
 
                         clickedItem.playable -> {
-                            PlayerApi.playItemAtIndex(
+                            com.niki.spotify.remote.PlayerApi.playItemAtIndex(
                                 item, // 此 item 应为歌单列表 item
                                 position
                             )

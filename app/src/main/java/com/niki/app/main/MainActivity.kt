@@ -11,10 +11,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.niki.app.DevApiTest
 import com.niki.app.GetSpotifyCode
 import com.niki.app.GetTokensWithCode
 import com.niki.app.NetViewModel
 import com.niki.app.R
+import com.niki.app.TokenInitOk
 import com.niki.app.TokenRequestError
 import com.niki.app.TokensRefreshed
 import com.niki.app.databinding.ActivityMainBinding
@@ -25,8 +27,8 @@ import com.niki.app.util.appLoadingDialog
 import com.niki.app.util.getSeekBarProgress
 import com.niki.app.util.loadLargeImage
 import com.niki.app.util.showMDDialog
-import com.niki.spotify_objs.PlayerApi
-import com.niki.spotify_objs.RemoteManager
+import com.niki.spotify.remote.PlayerApi
+import com.niki.spotify.remote.RemoteManager
 import com.niki.util.Point
 import com.niki.util.getIntersectionPoint
 import com.niki.util.loadRadiusBitmap
@@ -76,7 +78,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         appLoadingDialog = LoadingDialog(this@MainActivity)
 
-        playerApi = PlayerApi
+        playerApi = com.niki.spotify.remote.PlayerApi
         lifecycleOwner = this@MainActivity
 
         sizeManager = MainActivitySizeManager(this@MainActivity)
@@ -139,13 +141,13 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         startSeekbarStateCheckJob()
 
-        RemoteManager.isConnected.observe(this@MainActivity) {
+        com.niki.spotify.remote.RemoteManager.isConnected.observe(this@MainActivity) {
             if (it)
-                PlayerApi.startListen()
+                com.niki.spotify.remote.PlayerApi.startListen()
             floatButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
         }
 
-        PlayerApi.coverUrl.observe(this@MainActivity) {
+        com.niki.spotify.remote.PlayerApi.coverUrl.observe(this@MainActivity) {
             loadLargeImage(it) { bitmap ->
                 if (playerBehavior.state == BottomSheetBehavior.STATE_COLLAPSED)
                     adjustCover(0F) // 让图片立即复位
@@ -161,13 +163,13 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             }
         }
 
-        PlayerApi.isPaused.observe(this@MainActivity) { isPaused -> // 暂停图片切换
+        com.niki.spotify.remote.PlayerApi.isPaused.observe(this@MainActivity) { isPaused -> // 暂停图片切换
             val res = if (isPaused) R.drawable.ic_play else R.drawable.ic_pause
             play.setImageResource(res)
             miniPlay.setImageResource(res)
         }
 
-        PlayerApi.isLoading.observe(this@MainActivity) { // seekbar 加载中
+        com.niki.spotify.remote.PlayerApi.isLoading.observe(this@MainActivity) { // seekbar 加载中
             seekbar.isLoading = it
         }
 
@@ -180,6 +182,10 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                         "TokenRequestError",
                         "${effect.code}\n${effect.msg}"
                     )
+
+                    TokenInitOk -> {
+                        netViewModel.sendIntent(DevApiTest)
+                    }
                 }
             }
         }
@@ -366,7 +372,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            PlayerApi.run {
+            com.niki.spotify.remote.PlayerApi.run {
                 val percent = mainViewModel.notedProgress / SEEKBAR_MAX
                 val time = (percent * duration.value!!).toLong()
                 seekTo(time)

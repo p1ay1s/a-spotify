@@ -1,6 +1,6 @@
 package com.niki.app.net.auth
 
-import com.niki.spotify_objs.REDIRECT_URI
+import com.niki.spotify.remote.REDIRECT_URI
 import retrofit2.Call
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -18,7 +18,7 @@ interface AuthService {
     fun getTokenWithCode(
         @Field("code") code: String,
         @Field("grant_type") grantType: String = TYPE_CODE,
-        @Field("redirect_uri") redirectUri: String = REDIRECT_URI
+        @Field("redirect_uri") redirectUri: String = com.niki.spotify.remote.REDIRECT_URI
     ): Call<TokenResponse>
 
     @POST("api/token")

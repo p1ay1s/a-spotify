@@ -4,9 +4,9 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.niki.app.net.SpotifyModel
 import com.niki.app.net.auth.AuthApi
 import com.niki.app.net.request
+import com.niki.app.net.web_api.SpotifyApi
 import com.niki.app.util.appAccess
 import com.niki.app.util.appLastSet
 import com.niki.app.util.appOFD
@@ -32,12 +32,14 @@ import kotlinx.coroutines.sync.withLock
 sealed class NetEffect
 sealed class NetIntent
 
+data object TokenInitOk : NetEffect()
 data object GetSpotifyCode : NetEffect()
 class TokenRequestError(val code: Int, val msg: String) : NetEffect()
 data object TokensRefreshed : NetEffect() // 成功刷新 token
 
 class GetTokensWithCode(val code: String) : NetIntent()
 data object RequireRefreshTokens : NetIntent()
+data object DevApiTest : NetIntent()
 
 /**
  * 使用 mvi 架构, 专用于处理有关 spotify 的请求
@@ -64,8 +66,7 @@ class NetViewModel : ViewModel() {
     private var isGettingTokens = false
 
     private val authApi = AuthApi()
-    private val spotifyModel = SpotifyModel()
-
+    private val spotifyApi = SpotifyApi()
 
     // { MVI 样板代码
     private val mviChannel = Channel<NetIntent>(Channel.UNLIMITED)
@@ -92,6 +93,7 @@ class NetViewModel : ViewModel() {
         when (intent) {
             is GetTokensWithCode -> getTokensWithCode(intent.code)
             RequireRefreshTokens -> refreshTokens()
+            DevApiTest -> devApiTest()
         }
     }
 
@@ -112,9 +114,30 @@ class NetViewModel : ViewModel() {
     }
     // }
 
+    private fun devApiTest() {
+//        spotifyApi.recommendationsService.getRecommendations(
+            spotifyApi.browseService.getNewReleases(
+//            mapOf(
+//                "seed_artists" to "4NHQUGzhtTLFvgF5SZesLK",
+//                "seed_genres" to "classical,country",
+//                "seed_tracks" to "0c6xIDDpzE81m2q797ordA"
+//            )
+        )
+            .request(
+                onSuccess = { r ->
+                    r?.let {
+                        r.albums
+                    }
+                },
+                onError = { _, _ -> }
+            )
+    }
+
     private fun loadPrefs(callback: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             loadPrefs().await()
+            if (!isOFD() && appAccess.isNotBlank())
+                sendEffect(TokenInitOk)
             callback()
         }
     }
@@ -214,7 +237,7 @@ class NetViewModel : ViewModel() {
         autoRefreshTokensJob?.cancel()
         autoRefreshTokensJob = viewModelScope.launch(Dispatchers.IO) {
             while (true) {
-                if (System.currentTimeMillis() - appLastSet + 5000 > appOFD * 1000) {
+                if (isOFD() && !isTokensRefreshing) {
                     logE(TAG, "token 过期, 将刷新")
                     refreshTokens()
                 }
@@ -222,4 +245,9 @@ class NetViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * 是否过期, 此处多算了 5s 提前更新
+     */
+    private fun isOFD() = System.currentTimeMillis() - appLastSet + 5000 > appOFD * 1000
 }

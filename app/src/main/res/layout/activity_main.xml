@@ -6,7 +6,7 @@
 
         <variable
             name="playerApi"
-            type="com.niki.spotify_objs.PlayerApi" />
+            type="com.niki.spotify.remote.PlayerApi" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout

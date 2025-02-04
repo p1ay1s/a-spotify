@@ -2,9 +2,9 @@ package com.niki.app.util
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.niki.spotify_objs.LOAD_BATCH_SIZE
-import com.niki.spotify_objs.ListItemResult
-import com.niki.spotify_objs.logS
+import com.niki.spotify.remote.LOAD_BATCH_SIZE
+import com.niki.spotify.remote.ListItemResult
+import com.niki.spotify.remote.logS
 import com.spotify.protocol.types.ListItem
 
 /**
@@ -36,7 +36,7 @@ class SongRepository {
         synchronized(lock) {
             if (isFetching) return
             if (!hasMore) {
-                logS("${item.title}: no more")
+                com.niki.spotify.remote.logS("${item.title}: no more")
                 return
             }
             isFetching = true
@@ -45,7 +45,7 @@ class SongRepository {
         // 总是获取某一片段的数据
         SpotifyChildrenLoader.getChildrenOfItem(item, currentOffset) { result ->
             synchronized(lock) {
-                if (result is ListItemResult.HasChildren) {
+                if (result is com.niki.spotify.remote.ListItemResult.HasChildren) {
                     addList(result.list)
                     callback(true)
                 } else {
@@ -61,7 +61,7 @@ class SongRepository {
         val original = list.value ?: emptyList()
         _list.value = (original + l).toList()
         currentOffset = _list.value?.size ?: 0
-        if (l.size != LOAD_BATCH_SIZE)
+        if (l.size != com.niki.spotify.remote.LOAD_BATCH_SIZE)
             hasMore = false
     }
 }

@@ -11,7 +11,8 @@ import androidx.recyclerview.widget.DiffUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.niki.app.R
 import com.niki.app.ui.LoadingDialog
-import com.niki.spotify_objs.toLogString
+import com.niki.spotify.remote.logS
+import com.niki.spotify.remote.toLogString
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.toast
 import com.zephyr.base.ui.findHost
@@ -24,6 +25,10 @@ const val PRE_LOAD_NUM = 10
 
 @Volatile
 var appAccess = ""
+    set(value) {
+        field = value
+        com.niki.spotify.remote.logS(" \n\nAuthorization\nBearer $field\n\n ")
+    }
 
 @Volatile
 var appRefresh = ""

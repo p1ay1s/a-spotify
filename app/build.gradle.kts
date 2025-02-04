@@ -54,8 +54,8 @@ android {
 dependencies {
     implementation(libs.auth)
     implementation(libs.spotify.web.api.android)
-    implementation(project(":spotify-objs"))
     implementation(project(":spotify-remote"))
+    implementation(project(":spotify"))
 
     implementation(project(":util"))
 

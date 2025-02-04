@@ -1,9 +1,9 @@
 package com.niki.app.util
 
 import com.niki.app.util.cache_pool.ListItemCachePool
-import com.niki.spotify_objs.ContentApi
-import com.niki.spotify_objs.ListItemResult
-import com.niki.spotify_objs.logS
+import com.niki.spotify.remote.ContentApi
+import com.niki.spotify.remote.ListItemResult
+import com.niki.spotify.remote.logS
 import com.spotify.protocol.types.ListItem
 import kotlinx.coroutines.Job
 
@@ -26,18 +26,18 @@ object SpotifyChildrenLoader {
     private val lock = Any()
 
     private val waitingJobs = hashMapOf<ListItem, Job>()
-    private val uiJobs = hashMapOf<ListItem, MutableList<(ListItemResult) -> Unit>>()
+    private val uiJobs = hashMapOf<ListItem, MutableList<(com.niki.spotify.remote.ListItemResult) -> Unit>>()
 
 
-    private fun onCache(item: ListItem, result: ListItemResult) {
-        logS("[${item.title}] 缓存为 ${result::class.java.simpleName}")
+    private fun onCache(item: ListItem, result: com.niki.spotify.remote.ListItemResult) {
+        com.niki.spotify.remote.logS("[${item.title}] 缓存为 ${result::class.java.simpleName}")
         ListItemCachePool.cacheR(item.id, result) // 直接交给缓存池处理
     }
 
-    private fun onCallback(item: ListItem, result: ListItemResult) = synchronized(lock) {
+    private fun onCallback(item: ListItem, result: com.niki.spotify.remote.ListItemResult) = synchronized(lock) {
         val callbacks = uiJobs.remove(item) ?: emptyList() // 获取所有待通知的回调
 
-        logS("[${item.title}] 回调x${callbacks.size}")
+        com.niki.spotify.remote.logS("[${item.title}] 回调x${callbacks.size}")
         runOnMain {
             callbacks.forEach { it.invoke(result) }
         }
@@ -47,7 +47,7 @@ object SpotifyChildrenLoader {
      * 对 item 预缓存前 20 个
      */
     fun preCacheChildren(item: ListItem) {
-        val job = ContentApi.getWaitJob(item, 0) {
+        val job = com.niki.spotify.remote.ContentApi.getWaitJob(item, 0) {
             onCache(item, it)
             onCallback(item, it)
         }
@@ -55,7 +55,7 @@ object SpotifyChildrenLoader {
         job.invokeOnCompletion {
             synchronized(lock) {
                 it?.logS()
-                logS("[${item.title}] cache job 完成")
+                com.niki.spotify.remote.logS("[${item.title}] cache job 完成")
                 waitingJobs.remove(item)
             }
         }
@@ -72,7 +72,7 @@ object SpotifyChildrenLoader {
     fun getChildrenOfItem(
         item: ListItem,
         offset: Int,
-        callback: (result: ListItemResult) -> Unit
+        callback: (result: com.niki.spotify.remote.ListItemResult) -> Unit
     ) {
         synchronized(lock) {
             val callbacks = uiJobs.getOrPut(item) { mutableListOf() }
@@ -80,14 +80,14 @@ object SpotifyChildrenLoader {
 
             ListItemCachePool.fetchR(item.id, offset).let { result ->
                 when (result) {
-                    ListItemResult.Error -> return@let
+                    com.niki.spotify.remote.ListItemResult.Error -> return@let
 
-                    is ListItemResult.HasChildren -> {
-                        logS("[${item.title} $offset] 获取缓存x${result.list.size}")
+                    is com.niki.spotify.remote.ListItemResult.HasChildren -> {
+                        com.niki.spotify.remote.logS("[${item.title} $offset] 获取缓存x${result.list.size}")
                     }
 
-                    ListItemResult.NoChildren -> {
-                        logS("[${item.title} $offset] 获取缓存为 noChildren")
+                    com.niki.spotify.remote.ListItemResult.NoChildren -> {
+                        com.niki.spotify.remote.logS("[${item.title} $offset] 获取缓存为 noChildren")
                     }
                 }
                 onCallback(item, result)
@@ -96,7 +96,7 @@ object SpotifyChildrenLoader {
 
             val waitingJob = waitingJobs[item]
             waitingJob?.cancel()
-            val job = ContentApi.getUIJob(item, offset) { result ->
+            val job = com.niki.spotify.remote.ContentApi.getUIJob(item, offset) { result ->
                 onCache(item, result)
                 onCallback(item, result)
             }
@@ -104,7 +104,7 @@ object SpotifyChildrenLoader {
             job.invokeOnCompletion {
                 synchronized(lock) {
                     it?.logS()
-                    logS(item.title + " ui job 完成")
+                    com.niki.spotify.remote.logS(item.title + " ui job 完成")
                 }
             }
             job.start()

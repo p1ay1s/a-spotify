@@ -10,20 +10,20 @@ import com.niki.app.util.cache_pool.BitmapCachePool
 import com.niki.app.util.cache_pool.ListItemCachePool
 import com.niki.app.util.cache_pool.LowBitmapCachePool
 import com.niki.app.util.vibrator
-import com.niki.spotify_objs.RemoteManager
+import com.niki.spotify.remote.RemoteManager
 import com.zephyr.base.appBaseUrl
 import com.zephyr.base.extension.toast
+import com.zephyr.base.log.ERROR
 import com.zephyr.base.log.Logger
-import com.zephyr.base.log.VERBOSE
 import com.zephyr.base.log.logE
 
 class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Logger.startLogger(this, VERBOSE)
+        Logger.startLogger(this, ERROR)
 
-        RemoteManager.connectSpotify()
+        com.niki.spotify.remote.RemoteManager.connectSpotify()
 
         appBaseUrl = "https://accounts.spotify.com/"
         // appBaseUrl = "https://api.spotify.com/v1/"

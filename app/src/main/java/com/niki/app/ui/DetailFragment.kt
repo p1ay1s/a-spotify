@@ -6,8 +6,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.niki.app.databinding.FragmentDetailBinding
 import com.niki.app.util.loadLargeImage
 import com.niki.app.util.vibrator
-import com.niki.spotify_objs.PlayerApi
-import com.niki.spotify_objs.createListItem
+import com.niki.spotify.remote.PlayerApi
+import com.niki.spotify.remote.createListItem
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.vbclass.ui.ViewBindingDialogFragment
@@ -52,15 +52,19 @@ class DetailFragment(private val song: Song) :
 
         artistName.setOnClickListener {
             if (!song.artistId.startsWith("spotify:")) return@setOnClickListener
-            callback?.invoke(this@DetailFragment, createListItem(song.artistId))
+            callback?.invoke(this@DetailFragment,
+                com.niki.spotify.remote.createListItem(song.artistId)
+            )
         }
         albumName.setOnClickListener {
             if (!song.albumId.startsWith("spotify:")) return@setOnClickListener
-            callback?.invoke(this@DetailFragment, createListItem(song.albumId))
+            callback?.invoke(this@DetailFragment,
+                com.niki.spotify.remote.createListItem(song.albumId)
+            )
         }
         cover.setOnClickListener {
             if (!song.trackId.startsWith("spotify:")) return@setOnClickListener
-            PlayerApi.play(createListItem(song.trackId))
+            com.niki.spotify.remote.PlayerApi.play(com.niki.spotify.remote.createListItem(song.trackId))
             dismiss()
         }
     }
