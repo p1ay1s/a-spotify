@@ -40,7 +40,7 @@ dependencies {
     implementation(libs.zephyr.util)
 
     implementation(libs.google.gson)
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation(libs.converter.gson)
     implementation(libs.retrofit)
 
     implementation(libs.androidx.lifecycle.livedata.core.ktx)

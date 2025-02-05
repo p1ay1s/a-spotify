@@ -9,7 +9,7 @@ import com.niki.app.song.openSongFragment
 import com.niki.app.util.PRE_LOAD_NUM
 import com.niki.app.util.showItemInfoDialog
 import com.niki.app.util.vibrator
-import com.niki.spotify.remote.PlayerApi
+import com.niki.spotify.remote.RemoteManager
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.TAG
 import com.zephyr.base.extension.addOnLoadMoreListener_V
@@ -50,6 +50,10 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
             addOnLoadMoreListener_V(-1) {
                 refresh()
             }
+        }
+
+        RemoteManager.isConnected.observe(this@ListenNowFragment) {
+            if (it && (!isResumed || collectionAdapter.currentList.isEmpty())) viewmodel.fetch()
         }
 
         collectionAdapter.setOnClickListener(object : OnClickListener {

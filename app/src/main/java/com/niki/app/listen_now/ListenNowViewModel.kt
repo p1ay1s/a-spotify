@@ -4,10 +4,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.niki.app.util.withProgressBar
+import com.niki.app.util.appLoadingDialog
 import com.niki.spotify.remote.ContentApi
 import com.niki.spotify.remote.ListItemResult
-import com.niki.spotify.remote.RemoteManager
 import com.spotify.protocol.types.ListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,26 +24,22 @@ class ListenNowViewModel : ViewModel() {
 
     init {
         lastExitTime = System.currentTimeMillis()
-
-        com.niki.spotify.remote.RemoteManager.isConnected.observeForever {
-            if (it) fetch()
-        }
     }
 
     fun fetch() {
         if (isFetching) return
         isFetching = true
 
-        viewModelScope.launch {
-            withProgressBar {
-                val result = com.niki.spotify.remote.ContentApi.getContentList()
-                if (result is com.niki.spotify.remote.ListItemResult.HasChildren && result.list.isNotEmpty()) {
-                    withContext(Dispatchers.Main) {
-                        _contentList.value = result.list
-                    }
-                }
-                isFetching = false
+        viewModelScope.launch(Dispatchers.Main) {
+            appLoadingDialog?.show()
+            val result = withContext(Dispatchers.IO) {
+                ContentApi.getContentList()
             }
+            if (result is ListItemResult.HasChildren && result.list.isNotEmpty()) {
+                appLoadingDialog?.hide()
+                _contentList.value = result.list
+            }
+            isFetching = false
         }
     }
 }

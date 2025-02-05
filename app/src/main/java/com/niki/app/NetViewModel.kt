@@ -5,8 +5,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.niki.app.net.auth.AuthApi
-import com.niki.app.net.request
-import com.niki.app.net.web_api.SpotifyApi
+import com.niki.spotify.web.request
+import com.niki.spotify.web.SpotifyApi
 import com.niki.app.util.appAccess
 import com.niki.app.util.appLastSet
 import com.niki.app.util.appOFD
@@ -115,22 +115,22 @@ class NetViewModel : ViewModel() {
     // }
 
     private fun devApiTest() {
-//        spotifyApi.recommendationsService.getRecommendations(
-            spotifyApi.browseService.getNewReleases(
-//            mapOf(
-//                "seed_artists" to "4NHQUGzhtTLFvgF5SZesLK",
-//                "seed_genres" to "classical,country",
-//                "seed_tracks" to "0c6xIDDpzE81m2q797ordA"
+////        spotifyApi.recommendationsService.getRecommendations(
+//            spotifyApi.browseService.getNewReleases(
+////            mapOf(
+////                "seed_artists" to "4NHQUGzhtTLFvgF5SZesLK",
+////                "seed_genres" to "classical,country",
+////                "seed_tracks" to "0c6xIDDpzE81m2q797ordA"
+////            )
+//        )
+//            .request(
+//                onSuccess = { r ->
+//                    r?.let {
+//                        r.albums
+//                    }
+//                },
+//                onError = { _, _ -> }
 //            )
-        )
-            .request(
-                onSuccess = { r ->
-                    r?.let {
-                        r.albums
-                    }
-                },
-                onError = { _, _ -> }
-            )
     }
 
     private fun loadPrefs(callback: () -> Unit) {

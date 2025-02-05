@@ -1,5 +1,7 @@
-package com.niki.app.net
+package com.niki.spotify.web
 
+import com.niki.spotify.remote.logS
+import com.zephyr.util.net.Error
 import com.zephyr.util.net.handleResult
 import com.zephyr.util.net.requestEnqueue
 import okhttp3.Interceptor
@@ -15,7 +17,12 @@ const val CONNECT_TIMEOUT: Long = 30
 inline fun <T> Call<T>.request(
     crossinline onSuccess: (T?) -> Unit,
     crossinline onError: (Int?, String) -> Unit
-) = requestEnqueue { it.handleResult(onSuccess, onError) }
+) = requestEnqueue { result ->
+    if (result is Error && result.code == 401) {
+        logS("token 过期")
+    }
+    result.handleResult(onSuccess, onError)
+}
 
 inline fun <reified T> createService(baseurl: String, interceptor: Interceptor? = null) =
     Retrofit.Builder()

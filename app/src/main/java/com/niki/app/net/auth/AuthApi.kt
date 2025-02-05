@@ -1,8 +1,6 @@
 package com.niki.app.net.auth
 
-import com.niki.app.net.createService
-import com.niki.spotify.remote.CLIENT_ID
-import com.niki.spotify.remote.CLIENT_SECRET
+import com.niki.spotify.web.createService
 import com.zephyr.util.toBase64String
 import okhttp3.Interceptor
 

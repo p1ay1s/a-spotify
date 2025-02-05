@@ -17,6 +17,7 @@ paletteKtx = "1.0.0"
 lifecycleLivedataCoreKtx = "2.8.7"
 
 [libraries]
+converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
 github-glide = { module = "com.github.bumptech.glide:glide", version.ref = "glideVersion" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 auth = { module = "com.spotify.android:auth", version.ref = "auth" }

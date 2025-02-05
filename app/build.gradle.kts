@@ -67,9 +67,6 @@ dependencies {
     implementation(libs.zephyr.util)
     implementation(libs.zephyr.base)
 
-    implementation("com.squareup.retrofit:retrofit:1.9.0") // 后面移除
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-
     implementation(libs.retrofit)
     implementation(libs.google.gson)
 
