@@ -3,11 +3,9 @@ package com.niki.app.ui
 
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.niki.app.App
 import com.niki.app.databinding.FragmentDetailBinding
 import com.niki.app.util.loadLargeImage
-import com.niki.app.util.vibrator
-import com.niki.spotify.remote.PlayerApi
-import com.niki.spotify.remote.createListItem
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.vbclass.ui.ViewBindingDialogFragment
@@ -32,7 +30,7 @@ suspend fun Fragment.showSongDetail(
     fragment.callback = callback
     withContext(Dispatchers.Main) {
         fragment.show(parentFragmentManager, "SONG_DETAIL")
-        vibrator?.vibrate(15)
+        App.vibrator?.vibrate(15)
     }
 }
 
@@ -52,13 +50,15 @@ class DetailFragment(private val song: Song) :
 
         artistName.setOnClickListener {
             if (!song.artistId.startsWith("spotify:")) return@setOnClickListener
-            callback?.invoke(this@DetailFragment,
+            callback?.invoke(
+                this@DetailFragment,
                 com.niki.spotify.remote.createListItem(song.artistId)
             )
         }
         albumName.setOnClickListener {
             if (!song.albumId.startsWith("spotify:")) return@setOnClickListener
-            callback?.invoke(this@DetailFragment,
+            callback?.invoke(
+                this@DetailFragment,
                 com.niki.spotify.remote.createListItem(song.albumId)
             )
         }

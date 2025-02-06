@@ -69,6 +69,7 @@ dependencies {
 
     implementation(libs.retrofit)
     implementation(libs.google.gson)
+    implementation(libs.converter.gson)
 
 //    implementation("androidx.compose.compiler:compiler:1.5.1")
 //    implementation("androidx.compose.runtime:runtime:1.5.1")

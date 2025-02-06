@@ -11,22 +11,19 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.niki.app.DevApiTest
-import com.niki.app.GetSpotifyCode
-import com.niki.app.GetTokensWithCode
-import com.niki.app.NetViewModel
+import com.niki.app.App
+import com.niki.app.AppTokenHelper
 import com.niki.app.R
-import com.niki.app.TokenInitOk
-import com.niki.app.TokenRequestError
-import com.niki.app.TokensRefreshed
+import com.niki.app.TokenEffect
+import com.niki.app.TokenIntent
 import com.niki.app.databinding.ActivityMainBinding
 import com.niki.app.listen_now.ListenNowFragment
+import com.niki.app.search.SearchFragment
+import com.niki.app.showMDDialog
 import com.niki.app.ui.LoadingDialog
-import com.niki.app.util.Fragments
-import com.niki.app.util.appLoadingDialog
+import com.niki.app.util.FragmentTags
 import com.niki.app.util.getSeekBarProgress
 import com.niki.app.util.loadLargeImage
-import com.niki.app.util.showMDDialog
 import com.niki.spotify.remote.PlayerApi
 import com.niki.spotify.remote.RemoteManager
 import com.niki.util.Point
@@ -41,30 +38,15 @@ import com.zephyr.base.log.logE
 import com.zephyr.vbclass.ViewBindingActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @SuppressLint("SetTextI18n")
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
-    companion object {
-        private const val SEEKBAR_SCALE = 15.0 // 进度条的细腻程度, 越大越细腻
-
-        const val SEEKBAR_MAX = SEEKBAR_SCALE * 17
-
-        const val BOTTOM_NAV_WEIGHT = 0.115
-        const val MINI_PLAYER_WEIGHT = 0.08
-
-        const val MINI_COVER_SIZE = 0.8F // 占 mini player 高度的百分比
-
-        private const val COVER_SCALE_K = -1.3F
-
-        const val TWO_PRESSES_TO_EXIT_APP_TIME = 3000
-    }
-
     private val playerBehavior
         get() = BottomSheetBehavior.from(binding.player)
 
-    private val netViewModel by lazy { ViewModelProvider(this)[NetViewModel::class.java] }
     private val mainViewModel by lazy { ViewModelProvider(this)[MainViewModel::class.java] }
 
     private lateinit var authManager: SpotifyAuthManager
@@ -76,9 +58,9 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             useFullScreen()
 
-        appLoadingDialog = LoadingDialog(this@MainActivity)
+        App.loadingDialog = LoadingDialog(this@MainActivity)
 
-        playerApi = com.niki.spotify.remote.PlayerApi
+        playerApi = PlayerApi
         lifecycleOwner = this@MainActivity
 
         sizeManager = MainActivitySizeManager(this@MainActivity)
@@ -90,7 +72,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             response.run {
                 when (type) {
                     AuthorizationResponse.Type.CODE
-                    -> netViewModel.sendIntent(GetTokensWithCode(code))
+                    -> AppTokenHelper.sendIntent(TokenIntent.GetWithCode(code))
 
                     AuthorizationResponse.Type.TOKEN -> {}
 
@@ -105,10 +87,14 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         hostView.apply {
             fragmentManager = supportFragmentManager
             addHost(R.id.index_me)
-            addHost(R.id.index_search)
+            addHost(
+                R.id.index_search,
+                FragmentTags.SEARCH,
+                SearchFragment()
+            )
             addHost(
                 R.id.index_listen_now,
-                Fragments.LISTEN_NOW,
+                FragmentTags.LISTEN_NOW,
                 ListenNowFragment()
             )
         }
@@ -141,13 +127,13 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         startSeekbarStateCheckJob()
 
-        com.niki.spotify.remote.RemoteManager.isConnected.observe(this@MainActivity) {
+        RemoteManager.isConnected.observe(this@MainActivity) {
             if (it)
-                com.niki.spotify.remote.PlayerApi.startListen()
+                PlayerApi.startListen()
             floatButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
         }
 
-        com.niki.spotify.remote.PlayerApi.coverUrl.observe(this@MainActivity) {
+        PlayerApi.coverUrl.observe(this@MainActivity) {
             loadLargeImage(it) { bitmap ->
                 if (playerBehavior.state == BottomSheetBehavior.STATE_COLLAPSED)
                     adjustCover(0F) // 让图片立即复位
@@ -163,29 +149,31 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             }
         }
 
-        com.niki.spotify.remote.PlayerApi.isPaused.observe(this@MainActivity) { isPaused -> // 暂停图片切换
+        PlayerApi.isPaused.observe(this@MainActivity) { isPaused -> // 暂停图片切换
             val res = if (isPaused) R.drawable.ic_play else R.drawable.ic_pause
             play.setImageResource(res)
             miniPlay.setImageResource(res)
         }
 
-        com.niki.spotify.remote.PlayerApi.isLoading.observe(this@MainActivity) { // seekbar 加载中
+        PlayerApi.isLoading.observe(this@MainActivity) { // seekbar 加载中
             seekbar.isLoading = it
         }
 
-        lifecycleScope.launch {
-            netViewModel.uiEffectFlow.collect { effect ->
-                when (effect) {
-                    TokensRefreshed -> {}
-                    GetSpotifyCode -> authManager.authenticate()
-                    is TokenRequestError -> showMDDialog(
-                        "TokenRequestError",
-                        "${effect.code}\n${effect.msg}"
-                    )
+        AppTokenHelper.collectEffect(lifecycleScope) { e ->
+            when (e) {
+                TokenEffect.CodeNeeded -> authManager.authenticate()
+                is TokenEffect.RequestError ->
+                    showMDDialog("error", "${e.error.code}\n${e.error.msg}")
+            }
+        }
 
-                    TokenInitOk -> {
-                        netViewModel.sendIntent(DevApiTest)
-                    }
+        AppTokenHelper.observeState(lifecycleScope) {
+            map {
+                it.isAvailable // 细化观察的属性
+            }.collect { v ->
+                if (v) {
+                    "web-api ok".toast()
+                    mainViewModel.test()
                 }
             }
         }
@@ -288,7 +276,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         }
 
         when (pair.first) {
-            Fragments.LISTEN_NOW -> twoClicksToExit()
+            FragmentTags.LISTEN_NOW -> twoClicksToExit()
 
             else -> {
                 val success = binding.hostView.getActiveHost()?.popFragment(
@@ -372,7 +360,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            com.niki.spotify.remote.PlayerApi.run {
+            PlayerApi.run {
                 val percent = mainViewModel.notedProgress / SEEKBAR_MAX
                 val time = (percent * duration.value!!).toLong()
                 seekTo(time)

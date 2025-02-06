@@ -4,22 +4,19 @@ import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.niki.app.App
+import com.niki.app.ContentType
+import com.niki.app.PRE_LOAD_NUM
 import com.niki.app.databinding.FragmentListItemBinding
 import com.niki.app.interfaces.OnClickListener
+import com.niki.app.openNewFragment
+import com.niki.app.parseSpotifyId
+import com.niki.app.showItemInfoDialog
 import com.niki.app.song.SongFragment.Companion.ERROR_MSG
 import com.niki.app.song.ui.SongAdapter
-import com.niki.app.util.ContentType
-import com.niki.app.util.PRE_LOAD_NUM
+import com.niki.app.toastM
 import com.niki.app.util.SongRepository
-import com.niki.app.util.appLoadingDialog
 import com.niki.app.util.loadLargeImage
-import com.niki.app.util.openNewFragment
-import com.niki.app.util.parseSpotifyId
-import com.niki.app.util.showItemInfoDialog
-import com.niki.app.util.toastM
-import com.niki.app.util.vibrator
-import com.niki.spotify.remote.PlayerApi
-import com.niki.spotify.remote.logS
 import com.niki.util.toBlurDrawable
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addLineDecoration
@@ -36,21 +33,21 @@ fun Fragment.openSongFragment(item: ListItem, callback: (Boolean) -> Unit) =
     synchronized(songFragmentLock) {
         if (isOpening) return@synchronized
         isOpening = true
-        appLoadingDialog?.show()
+        App.loadingDialog?.show()
         val songFragment = SongFragment()
         songFragment.let {
             it.setListItem(item)
             it.listener = object : SongFragment.Listener {
                 override fun onFetched(fragment: SongFragment) =
                     lifecycleScope.launch(Dispatchers.Main) {
-                        appLoadingDialog?.hide()
+                        App.loadingDialog?.hide()
                         openNewFragment(item.id, fragment)
                         callback(true)
                         isOpening = false
                     }
 
                 override fun onError() = lifecycleScope.launch(Dispatchers.Main) {
-                    appLoadingDialog?.hide()
+                    App.loadingDialog?.hide()
                     com.niki.spotify.remote.logS(ERROR_MSG)
                     callback(false)
                     isOpening = false
@@ -113,7 +110,7 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
             parentItem = item
             setOnClickListener(object : OnClickListener {
                 override fun onClicked(clickedItem: ListItem, position: Int) {
-                    vibrator?.vibrate(25L)
+                    App.vibrator?.vibrate(25L)
                     when {
                         clickedItem.hasChildren ->
                             openSongFragment(clickedItem) { success ->
@@ -139,7 +136,7 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
                 }
 
                 override fun onLongClicked(clickedItem: ListItem, parentItem: ListItem) {
-                    vibrator?.vibrate(25L)
+                    App.vibrator?.vibrate(25L)
                     requireActivity().showItemInfoDialog(clickedItem)
 //                    showSongDetail(
 //                        Song(

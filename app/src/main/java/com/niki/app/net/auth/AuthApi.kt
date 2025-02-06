@@ -1,6 +1,8 @@
 package com.niki.app.net.auth
 
-import com.niki.spotify.web.createService
+import com.niki.app.net.createService
+import com.niki.spotify.remote.CLIENT_ID
+import com.niki.spotify.remote.CLIENT_SECRET
 import com.zephyr.util.toBase64String
 import okhttp3.Interceptor
 
@@ -9,7 +11,8 @@ class AuthApi {
         private const val BASE_URL = "https://accounts.spotify.com/"
     }
 
-    private val base64Credentials: String = "Basic " + toBase64String("${com.niki.spotify.remote.CLIENT_ID}:${com.niki.spotify.remote.CLIENT_SECRET}")
+    private val authorization =
+        "Basic " + "${CLIENT_ID}:${CLIENT_SECRET}".toBase64String()
 
     val service by lazy {
         createService<AuthService>(
@@ -20,7 +23,8 @@ class AuthApi {
 
     private fun createAuthInterceptor() = Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .addHeader("Authorization", base64Credentials)
+            .addHeader("Authorization", authorization)
+            .addHeader("Content-Type", "application/x-www-form-urlencoded")
             .build()
         chain.proceed(request)
     }

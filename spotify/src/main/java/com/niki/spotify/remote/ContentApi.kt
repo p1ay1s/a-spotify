@@ -17,7 +17,6 @@ import kotlinx.coroutines.withTimeout
 
 object ContentApi {
 
-
     private val semaphore = Semaphore(MAX_CALL_COUNT) // 最多并发获取的内容数量上限
 
     @JvmName("toListItemResult1")

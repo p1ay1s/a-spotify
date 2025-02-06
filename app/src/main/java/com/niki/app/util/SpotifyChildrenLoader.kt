@@ -1,8 +1,7 @@
 package com.niki.app.util
 
+import com.niki.app.runOnMain
 import com.niki.app.util.cache_pool.ListItemCachePool
-import com.niki.spotify.remote.ContentApi
-import com.niki.spotify.remote.ListItemResult
 import com.niki.spotify.remote.logS
 import com.spotify.protocol.types.ListItem
 import kotlinx.coroutines.Job

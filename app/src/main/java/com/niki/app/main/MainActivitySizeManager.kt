@@ -1,8 +1,5 @@
 package com.niki.app.main
 
-import com.niki.app.main.MainActivity.Companion.BOTTOM_NAV_WEIGHT
-import com.niki.app.main.MainActivity.Companion.MINI_COVER_SIZE
-import com.niki.app.main.MainActivity.Companion.MINI_PLAYER_WEIGHT
 import com.niki.app.databinding.ActivityMainBinding
 import com.zephyr.base.extension.getScreenHeight
 import com.zephyr.base.extension.getScreenWidth

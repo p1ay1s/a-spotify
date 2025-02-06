@@ -1,7 +1,7 @@
 package com.niki.app.util
 
 import android.graphics.Bitmap
-import com.niki.app.main.MainActivity
+import com.niki.app.main.SEEKBAR_MAX
 import com.niki.app.util.cache_pool.BitmapCachePool
 import com.niki.app.util.cache_pool.LowBitmapCachePool
 import com.niki.spotify.remote.ImageApi
@@ -13,10 +13,10 @@ import com.spotify.protocol.types.Image
  * seekbar progress
  */
 fun getSeekBarProgress(): Int {
-    val state = com.niki.spotify.remote.PlayerApi.getPlayerState()
+    val state = PlayerApi.getPlayerState()
     state.run {
         val progress = if (this?.track != null)
-            (playbackPosition * MainActivity.SEEKBAR_MAX / track.duration).toInt()
+            (playbackPosition * SEEKBAR_MAX / track.duration).toInt()
         else
             0
         return progress
@@ -29,7 +29,7 @@ fun getSeekBarProgress(): Int {
 fun loadSmallImage(uri: String, callback: (Bitmap) -> Unit) {
     LowBitmapCachePool.fetch(uri)
         ?.let(callback)
-        ?: com.niki.spotify.remote.ImageApi.loadImage(uri, Image.Dimension.X_SMALL) {
+        ?: ImageApi.loadImage(uri, Image.Dimension.X_SMALL) {
             callback(it)
             if (it.width == Image.Dimension.X_SMALL.value)
                 LowBitmapCachePool.cache(uri, it)
@@ -42,7 +42,7 @@ fun loadSmallImage(uri: String, callback: (Bitmap) -> Unit) {
 fun loadLargeImage(uri: String, callback: (Bitmap) -> Unit) {
     BitmapCachePool.fetch(uri)
         ?.let(callback)
-        ?: com.niki.spotify.remote.ImageApi.loadImage(uri, Image.Dimension.LARGE) {
+        ?: ImageApi.loadImage(uri, Image.Dimension.LARGE) {
             callback(it)
             if (it.width == Image.Dimension.LARGE.value)
                 BitmapCachePool.cache(uri, it)

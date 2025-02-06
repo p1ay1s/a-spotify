@@ -1,5 +1,7 @@
-package com.niki.spotify.web
+package com.niki.app.net.web_api
 
+import com.niki.app.App
+import com.niki.app.net.createService
 import com.niki.spotify.web.service.AlbumsService
 import com.niki.spotify.web.service.ArtistsService
 import com.niki.spotify.web.service.CategoriesService
@@ -11,8 +13,6 @@ import com.niki.spotify.web.service.UsersService
 import okhttp3.Interceptor
 
 class SpotifyApi {
-    private var accessToken = ""
-
     companion object {
         private const val BASE_URL = "https://api.spotify.com/v1/"
     }
@@ -40,15 +40,11 @@ class SpotifyApi {
         this.listener = listener
     }
 
-    private fun setAccess(token: String) {
-        accessToken = token
-    }
-
     private fun createAuthInterceptor() = Interceptor { chain ->
         val request = chain.request().newBuilder()
             .apply { // 拦截器的逻辑是在每次请求时都执行
-                if (accessToken.isNotBlank()) {
-                    addHeader("Authorization", "Bearer $accessToken")
+                if (App.accessToken.isNotBlank()) {
+                    addHeader("Authorization", "Bearer ${App.accessToken}")
                 } else
                     listener?.invoke()
             }

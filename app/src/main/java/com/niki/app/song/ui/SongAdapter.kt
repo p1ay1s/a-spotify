@@ -3,8 +3,8 @@ package com.niki.app.song.ui
 import android.view.View
 import com.niki.app.databinding.ItemSongBinding
 import com.niki.app.interfaces.OnClickListener
-import com.niki.app.util.ContentType
-import com.niki.app.util.ListItemCallback
+import com.niki.app.ContentType
+import com.niki.app.ListItemCallback
 import com.niki.app.util.loadSmallImage
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem

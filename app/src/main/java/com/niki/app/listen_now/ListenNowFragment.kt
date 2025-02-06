@@ -2,13 +2,13 @@ package com.niki.app.listen_now
 
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
+import com.niki.app.App
+import com.niki.app.PRE_LOAD_NUM
 import com.niki.app.databinding.FragmentListenNowBinding
 import com.niki.app.interfaces.OnClickListener
 import com.niki.app.listen_now.ui.PlaylistCollectionAdapter
+import com.niki.app.showItemInfoDialog
 import com.niki.app.song.openSongFragment
-import com.niki.app.util.PRE_LOAD_NUM
-import com.niki.app.util.showItemInfoDialog
-import com.niki.app.util.vibrator
 import com.niki.spotify.remote.RemoteManager
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.TAG
@@ -36,7 +36,6 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
 
         viewmodel.contentList.observe(this@ListenNowFragment) { list ->
             if (list.isNotEmpty()) {
-                "已获取".toast()
                 collectionAdapter.submitList(list)
             }
         }
@@ -58,7 +57,7 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
 
         collectionAdapter.setOnClickListener(object : OnClickListener {
             override fun onClicked(clickedItem: ListItem, position: Int) {
-                vibrator?.vibrate(25L)
+                App.vibrator?.vibrate(25L)
                 openSongFragment(clickedItem) { success ->
                     if (clickedItem.playable && !success) // 当 item 可播放并且无法打开歌单 fragment 时播放它
                         com.niki.spotify.remote.PlayerApi.play(clickedItem)
@@ -66,7 +65,7 @@ class ListenNowFragment : ViewBindingFragment<FragmentListenNowBinding>() {
             }
 
             override fun onLongClicked(clickedItem: ListItem, parentItem: ListItem) {
-                vibrator?.vibrate(25L)
+                App.vibrator?.vibrate(25L)
                 requireActivity().showItemInfoDialog(clickedItem)
 //                showSongDetail(
 //                    Song(

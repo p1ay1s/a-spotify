@@ -1,5 +1,6 @@
 package com.niki.app.util
 
-object Fragments {
+object FragmentTags {
     const val LISTEN_NOW = "listen now"
+    const val SEARCH = "search"
 }

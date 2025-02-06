@@ -1,12 +1,13 @@
 package com.niki.app.util.cache_pool
 
-import com.niki.app.util.ITEM_POOL_INIT_SIZE
-import com.niki.spotify.remote.ListItemResult
+import com.niki.app.ITEM_POOL_INIT_SIZE
 import com.niki.util.CachePool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-object ListItemCachePool : CachePool<ListItemCachePool.Key, com.niki.spotify.remote.ListItemResult>(ITEM_POOL_INIT_SIZE) {
+object ListItemCachePool : CachePool<ListItemCachePool.Key, com.niki.spotify.remote.ListItemResult>(
+    ITEM_POOL_INIT_SIZE
+) {
     private const val DEFAULT_OFFSET = 0
 
     fun cacheR(id: String, data: com.niki.spotify.remote.ListItemResult) {

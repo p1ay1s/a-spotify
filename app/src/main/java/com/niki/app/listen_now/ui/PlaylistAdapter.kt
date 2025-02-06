@@ -4,13 +4,13 @@ import android.view.View
 import androidx.core.view.marginEnd
 import com.niki.app.databinding.ItemPlaylistBinding
 import com.niki.app.interfaces.OnClickListener
-import com.niki.app.util.ContentType
-import com.niki.app.util.ListItemCallback
+import com.niki.app.ContentType
+import com.niki.app.ListItemCallback
 import com.niki.app.util.SongRepository
 import com.niki.app.util.SpotifyChildrenLoader
 import com.niki.app.util.loadLargeImage
-import com.niki.app.util.parseSpotifyId
-import com.niki.app.util.runOnMain
+import com.niki.app.parseSpotifyId
+import com.niki.app.runOnMain
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootWidth

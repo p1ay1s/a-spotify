@@ -5,14 +5,14 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.niki.app.util.appLoadingDialog
-import com.niki.spotify.remote.CLIENT_ID
-import com.niki.spotify.remote.REDIRECT_URI
 import com.niki.spotify.remote.logS
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
 
+/**
+ * 管理主活动向 spotify 请求连接的事务
+ */
 class SpotifyAuthManager(private var activity: AppCompatActivity?) {
     private var isWorking = false
     private var authCallback: ((ActivityResult) -> Unit)? = null
@@ -79,7 +79,6 @@ class SpotifyAuthManager(private var activity: AppCompatActivity?) {
     fun authenticate() {
         if (isWorking) return
         isWorking = true
-        appLoadingDialog?.hide()
         val intent = buildAuthRequest()
         launcher?.launch(intent) ?: { isWorking = false }
     }

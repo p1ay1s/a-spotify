@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.niki.app.util.appLoadingDialog
+import com.niki.app.App
 import com.niki.spotify.remote.ContentApi
 import com.niki.spotify.remote.ListItemResult
 import com.spotify.protocol.types.ListItem
@@ -31,12 +31,12 @@ class ListenNowViewModel : ViewModel() {
         isFetching = true
 
         viewModelScope.launch(Dispatchers.Main) {
-            appLoadingDialog?.show()
+            App.loadingDialog?.show()
             val result = withContext(Dispatchers.IO) {
                 ContentApi.getContentList()
             }
+            App.loadingDialog?.dismiss()
             if (result is ListItemResult.HasChildren && result.list.isNotEmpty()) {
-                appLoadingDialog?.hide()
                 _contentList.value = result.list
             }
             isFetching = false
