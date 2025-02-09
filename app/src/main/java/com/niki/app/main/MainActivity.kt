@@ -6,6 +6,7 @@ import android.os.Build
 import android.view.View
 import android.widget.SeekBar
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModelProvider
@@ -43,6 +44,7 @@ import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
 @SuppressLint("SetTextI18n")
+@RequiresApi(Build.VERSION_CODES.R)
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     companion object {
         var parentHeight: Int = 0
@@ -53,6 +55,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         var hostViewHeight: Int = 0
 
         var minCoverLength: Int = 0
+
+        var isEnableEdgeToEdge = false
     }
 
     private val playerBehavior
@@ -65,6 +69,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     private lateinit var bottomSheetCallbackImpl: BottomSheetCallbackImpl // 需要用同一监听器来取消监听
 
     override fun ActivityMainBinding.initBinding() {
+        isEnableEdgeToEdge = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             useFullScreen()
 
@@ -123,7 +128,6 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         playerBehavior.apply {
             isHideable = false
             state = BottomSheetBehavior.STATE_COLLAPSED
-            peekHeight = bottomNavHeight + miniPlayerHeight
             addBottomSheetCallback(bottomSheetCallbackImpl)
             bottomSheetCallbackImpl.onSlide(player, 0.0F) // 手动复位
         }
@@ -211,6 +215,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         WindowCompat.getInsetsController(window, window.decorView).systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         enableEdgeToEdge()
+        isEnableEdgeToEdge = true
     }
 
     /**

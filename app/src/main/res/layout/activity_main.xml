@@ -19,7 +19,7 @@
         <com.zephyr.base.ui.FragmentHostView
             android:id="@+id/host_view"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="100dp"
             android:layout_gravity="top" />
 
         <!-- 悬浮按钮, 用于连接 spotify -->
@@ -171,7 +171,7 @@
                 app:layout_constraintBottom_toBottomOf="@id/play_button"
                 app:layout_constraintStart_toStartOf="@id/seekbar"
                 app:layout_constraintTop_toTopOf="@id/play_button"
-                app:sizeToPercentOfWidth="0.18"
+                app:sizeToPercentOfWidth="0.17"
                 app:tint="@color/white_transparent" />
 
             <com.niki.app.ui.RButton
@@ -183,7 +183,7 @@
                 app:layout_constraintEnd_toStartOf="parent"
                 app:layout_constraintStart_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/seekbar"
-                app:sizeToPercentOfWidth="0.18"
+                app:sizeToPercentOfWidth="0.17"
                 app:tint="@color/white_transparent" />
 
             <com.niki.app.ui.RButton
@@ -195,7 +195,7 @@
                 app:layout_constraintBottom_toBottomOf="@id/play_button"
                 app:layout_constraintEnd_toEndOf="@id/seekbar"
                 app:layout_constraintTop_toTopOf="@id/play_button"
-                app:sizeToPercentOfWidth="0.18"
+                app:sizeToPercentOfWidth="0.17"
                 app:tint="@color/white_transparent" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>

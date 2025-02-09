@@ -1,10 +1,10 @@
 package com.niki.app.listen_now.ui
 
 import androidx.recyclerview.widget.RecyclerView
-import com.niki.app.databinding.ItemPlaylistCollectionBinding
-import com.niki.app.interfaces.OnClickListener
 import com.niki.app.ListItemCallback
 import com.niki.app.PRE_LOAD_NUM
+import com.niki.app.databinding.ItemPlaylistCollectionBinding
+import com.niki.app.interfaces.OnClickListener
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addOnLoadMoreListener_H
 import com.zephyr.base.extension.getRootHeight
@@ -64,7 +64,7 @@ class PlaylistCollectionAdapter :
             addOnLoadMoreListener_H(1) {
                 playlistAdapter.fetchDatas {
                     if (it) removeItemSafely(data)
-                    root.requestLayout()
+                    root.invalidate()
                 }
             }
         }
@@ -74,7 +74,7 @@ class PlaylistCollectionAdapter :
             playlistAdapter.setOnClickListener(listener)
             fetchDatas {
                 if (it) removeItemSafely(data)
-                root.requestLayout()
+                root.invalidate()
             }
         }
     }
