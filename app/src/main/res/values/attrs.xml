@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="sizeToPercentOfWidth" format="float" />
+
+    <declare-styleable name="RButton">
+        <attr name="sizeToPercentOfWidth" />
+    </declare-styleable>
+    <declare-styleable name="SquareImageView">
+        <attr name="sizeToPercentOfWidth" />
+    </declare-styleable>
+    <declare-styleable name="LoadingSeekbar">
+        <attr name="sizeToPercentOfWidth" />
+    </declare-styleable>
+    <declare-styleable name="MiniPlayerView">
+        <attr name="sizeToPercentOfWidth" />
+    </declare-styleable>
+</resources>

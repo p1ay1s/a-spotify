@@ -16,7 +16,7 @@ class MainActivitySizeManager(var activity: MainActivity?) {
     var bottomNavHeight: Int = 0
         private set
 
-    var miniPlayerHeight: Int = 0
+    var miniPlayerRootHeight: Int = 0
         private set
 
     var minCoverHeight: Int = 0
@@ -31,34 +31,24 @@ class MainActivitySizeManager(var activity: MainActivity?) {
         parentWidth = activity!!.getScreenWidth()
 
         bottomNavHeight = (parentHeight * BOTTOM_NAV_WEIGHT).toInt()
-        miniPlayerHeight = (parentHeight * MINI_PLAYER_WEIGHT).toInt()
-        minCoverHeight = (miniPlayerHeight * MINI_COVER_SIZE).toInt()
-        val hostViewHeight = parentHeight - bottomNavHeight - miniPlayerHeight
+        miniPlayerRootHeight = (parentHeight * MINI_PLAYER_WEIGHT).toInt()
+        minCoverHeight = (miniPlayerRootHeight * MINI_COVER_SIZE).toInt()
+        val hostViewHeight = parentHeight - bottomNavHeight - miniPlayerRootHeight
 
         hostView.setSize(height = hostViewHeight)
         bottomNavigation.setSize(height = bottomNavHeight)
 
-        cover.setSize((0.7 * parentWidth).toInt())
-        cover.setMargins(top = (0.17 * parentHeight).toInt())
+        coverImageView.setMargins(top = (0.17 * parentHeight).toInt())
         trackName.setMargins(top = (0.02 * parentHeight).toInt())
         seekbar.setMargins(top = (0.02 * parentHeight).toInt())
-        play.setMargins(top = (0.1 * parentHeight).toInt())
+        playButton.setMargins(top = (0.1 * parentHeight).toInt())
 
         line.setMargins(bottom = bottomNavHeight)
-        floatButton.setMargins(end = (0.08 * parentWidth).toInt())
+        connectButton.setMargins(end = (0.08 * parentWidth).toInt())
 
-        miniPlayer.setSize(
-            height = miniPlayerHeight,
-            width = parentWidth - miniPlayerHeight
+        miniPlayerRoot.setSize(
+//            height = miniPlayerRootHeight,
+            width = parentWidth - miniPlayerRootHeight
         )
-        main.post { // 确保有效地设置大小
-            seekbar.setSize(width = cover.width)
-            miniPlay.run {
-                setSize(width)
-            }
-            miniNext.run {
-                setSize(width)
-            }
-        }
     }
 }

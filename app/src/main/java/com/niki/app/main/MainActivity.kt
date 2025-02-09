@@ -105,7 +105,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         }
 
 
-        floatButton.setOnClickListener {
+        connectButton.setOnClickListener {
             authManager.authenticate()
         }
 
@@ -114,7 +114,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         playerBehavior.apply {
             isHideable = false
             state = BottomSheetBehavior.STATE_COLLAPSED
-            peekHeight = sizeManager.bottomNavHeight + sizeManager.miniPlayerHeight
+            peekHeight = sizeManager.bottomNavHeight + sizeManager.miniPlayerRootHeight
             addBottomSheetCallback(bottomSheetCallbackImpl)
             bottomSheetCallbackImpl.onSlide(player, 0.0F) // 手动复位
 
@@ -130,7 +130,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         RemoteManager.isConnected.observe(this@MainActivity) {
             if (it)
                 PlayerApi.startListen()
-            floatButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
+            connectButton.visibility = if (it) View.INVISIBLE else View.VISIBLE
         }
 
         PlayerApi.coverUrl.observe(this@MainActivity) {
@@ -138,7 +138,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 if (playerBehavior.state == BottomSheetBehavior.STATE_COLLAPSED)
                     adjustCover(0F) // 让图片立即复位
 
-                loadRadiusBitmap(bitmap, cover, 35)
+                loadRadiusBitmap(bitmap, coverImageView, COVER_RADIUS)
                 toBlurDrawable(bitmap) { blurDrawable ->
                     val transitionDrawable =
                         TransitionDrawable(arrayOf(player.background, blurDrawable))
@@ -151,8 +151,8 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         PlayerApi.isPaused.observe(this@MainActivity) { isPaused -> // 暂停图片切换
             val res = if (isPaused) R.drawable.ic_play else R.drawable.ic_pause
-            play.setImageResource(res)
-            miniPlay.setImageResource(res)
+            playButton.setImageResource(res)
+            miniPlayButton.setImageResource(res)
         }
 
         PlayerApi.isLoading.observe(this@MainActivity) { // seekbar 加载中
@@ -211,13 +211,13 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
      *
      * pivot 计算原理: 以 cover 左上角为原点, 求完全缩小和原始尺寸的 cover 的右上角、左下角坐标的交点即为 pivot 点
      */
-    private fun adjustCover(slideOffset: Float) = binding.cover.run {
+    private fun adjustCover(slideOffset: Float) = binding.coverImageView.run {
         val coverHeight = height // cover 的宽高
         if (coverHeight == 0) return@run // 若未加载出图片则返回
 
         val minTopMargin =
-            (sizeManager.miniPlayerHeight - sizeManager.minCoverHeight) / 2F  // 最小化 cover 的顶部 margin
-        val minLeftMargin = 0.1F * sizeManager.miniPlayerHeight // 左边 margin
+            (sizeManager.miniPlayerRootHeight - sizeManager.minCoverHeight) / 2F  // 最小化 cover 的顶部 margin
+        val minLeftMargin = 0.1F * sizeManager.miniPlayerRootHeight // 左边 margin
 
         val minScale = sizeManager.minCoverHeight.toFloat() / coverHeight // 使封面宽高到达最小的 scale 因子
 
@@ -313,11 +313,11 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 when (newState) {
                     BottomSheetBehavior.STATE_COLLAPSED -> {
                         adjustCover(0.0F)
-                        miniPlayer.visibility = View.VISIBLE
+                        miniPlayerRoot.visibility = View.VISIBLE
                     }
 
                     else ->
-                        miniPlayer.visibility = View.INVISIBLE
+                        miniPlayerRoot.visibility = View.INVISIBLE
                 }
             }
         }
@@ -330,15 +330,15 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         override fun onSlide(bottomSheet: View, slideOffset: Float) {
             if (slideOffset in 0.0F..1.0F) {
                 binding.run {
-                    shade.alpha = 1 - slideOffset * 15 // 使遮罩逐渐消失, 让背景显现
+                    shadeForMiniPlayer.alpha = 1 - slideOffset * 15 // 使遮罩逐渐消失, 让背景显现
                     val navY = sizeManager.bottomNavHeight * slideOffset * 2 // 导航栏的偏移量
-                    val floatBtnY =
+                    val connectButtonY =
                         sizeManager.parentHeight * -(0.8F * slideOffset + 0.23F) // 大概让按钮跟随 behavior 移动
 
                     bottomNavigation.translationY = navY
                     line.translationY = navY
 
-                    floatButton.translationY = floatBtnY
+                    connectButton.translationY = connectButtonY
                 }
             }
 

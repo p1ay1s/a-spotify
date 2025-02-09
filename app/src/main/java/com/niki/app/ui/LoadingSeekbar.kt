@@ -10,7 +10,10 @@ import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatSeekBar
 import androidx.core.animation.addListener
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
+import com.niki.app.R
 import com.niki.util.copy
+import com.zephyr.base.extension.getRootWidth
+import com.zephyr.base.extension.setSize
 import kotlin.math.roundToInt
 
 /**
@@ -52,7 +55,14 @@ class LoadingSeekbar @JvmOverloads constructor(
 
     private var originalDrawable: Drawable? = null
 
+    private var sizePercent: Float = 0f
+
     init {
+        context.obtainStyledAttributes(attrs, R.styleable.LoadingSeekbar).run {
+            sizePercent = getFloat(R.styleable.LoadingSeekbar_sizeToPercentOfWidth, 0f)
+            recycle()
+        }
+
         originalDrawable = progressDrawable.copy()
 
         loadingAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -100,13 +110,7 @@ class LoadingSeekbar @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (isLoading) return false
-//        when (event.action) {
-//            MotionEvent.ACTION_UP -> listener?.onUp(progress)
-//
-//            MotionEvent.ACTION_DOWN ->
-//                listener?.onDown(progress)
-//        }
+        if (isLoading) return false // 直接消费
         return super.onTouchEvent(event)
     }
 
@@ -115,5 +119,22 @@ class LoadingSeekbar @JvmOverloads constructor(
         loadingAnimator?.cancel()
         originalDrawable = null
         loadingAnimator = null
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        if (sizePercent > 0) {
+            val w = context.getRootWidth()
+            val size = (w * sizePercent).toInt()
+            val newMeasureSpec = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
+            super.onMeasure(newMeasureSpec, newMeasureSpec)
+        } else {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        }
+    }
+
+    fun setSizeToPercent(size: Float) = post {
+        val w = context.getRootWidth()
+        val mSize = (w * size).toInt()
+        setSize(mSize)
     }
 }

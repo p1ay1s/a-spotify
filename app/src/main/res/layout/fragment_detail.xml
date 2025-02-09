@@ -8,7 +8,7 @@
         android:background="@color/bar">
 
         <ImageView
-            android:id="@+id/cover"
+            android:id="@+id/cover_image_view"
             android:layout_width="90dp"
             android:layout_height="90dp"
             android:layout_margin="17dp"
@@ -29,8 +29,8 @@
             android:textStyle="bold"
             app:layout_constraintBottom_toTopOf="@id/artist_name"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/cover"
-            app:layout_constraintTop_toTopOf="@id/cover" />
+            app:layout_constraintStart_toEndOf="@id/cover_image_view"
+            app:layout_constraintTop_toTopOf="@id/cover_image_view" />
 
         <TextView
             android:id="@+id/artist_name"
@@ -45,7 +45,7 @@
             android:textSize="18sp"
             app:layout_constraintBottom_toTopOf="@id/album_name"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/cover"
+            app:layout_constraintStart_toEndOf="@id/cover_image_view"
             app:layout_constraintTop_toBottomOf="@id/track_name" />
 
         <TextView
@@ -59,9 +59,9 @@
             android:maxLines="1"
             android:textColor="@color/contrast"
             android:textSize="18sp"
-            app:layout_constraintBottom_toBottomOf="@id/cover"
+            app:layout_constraintBottom_toBottomOf="@id/cover_image_view"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/cover"
+            app:layout_constraintStart_toEndOf="@id/cover_image_view"
             app:layout_constraintTop_toBottomOf="@id/artist_name" />
 
 <!--        <TextView-->

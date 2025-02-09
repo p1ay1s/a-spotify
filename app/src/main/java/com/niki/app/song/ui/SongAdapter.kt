@@ -58,12 +58,12 @@ class SongAdapter(private val type: ContentType) :
         if (type == ContentType.ALBUM) {
             songDetails.visibility = View.GONE
             songDetails.text = ""
-            cover.visibility = View.GONE
+            coverImageView.visibility = View.GONE
         } else {
             songDetails.visibility = View.VISIBLE
             songDetails.text = data.subtitle
             loadSmallImage(data.imageUri.raw!!) { bitmap ->
-                root.context.loadRadiusBitmap(bitmap, cover)
+                root.context.loadRadiusBitmap(bitmap, coverImageView)
             }
         }
 

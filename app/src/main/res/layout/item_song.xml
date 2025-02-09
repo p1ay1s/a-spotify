@@ -40,7 +40,7 @@
             app:layout_constraintTop_toBottomOf="@id/track_name" />
 
         <ImageView
-            android:id="@+id/cover"
+            android:id="@+id/cover_image_view"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:padding="5dp"
@@ -60,7 +60,7 @@
             android:textColor="@color/contrast"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/songDetails"
-            app:layout_constraintStart_toEndOf="@id/cover"
+            app:layout_constraintStart_toEndOf="@id/cover_image_view"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintWidth_percent="0.7" />
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -11,7 +11,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
-
 const val READ_TIMEOUT: Long = 15
 const val CONNECT_TIMEOUT: Long = 30
 

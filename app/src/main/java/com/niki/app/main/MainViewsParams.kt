@@ -1,5 +1,7 @@
 package com.niki.app.main
 
+const val COVER_RADIUS = 20
+
 const val SEEKBAR_SCALE = 15.0 // 进度条的细腻程度, 越大越细腻
 
 const val SEEKBAR_MAX = SEEKBAR_SCALE * 17

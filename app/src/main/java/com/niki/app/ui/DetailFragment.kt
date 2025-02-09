@@ -45,7 +45,7 @@ class DetailFragment(private val song: Song) :
         albumName.text = song.albumName
 
         loadLargeImage(song.coverUri) { bitmap ->
-            requireActivity().loadRadiusBitmap(bitmap, cover, 35)
+            requireActivity().loadRadiusBitmap(bitmap, coverImageView, 35)
         }
 
         artistName.setOnClickListener {
@@ -62,7 +62,7 @@ class DetailFragment(private val song: Song) :
                 com.niki.spotify.remote.createListItem(song.albumId)
             )
         }
-        cover.setOnClickListener {
+        coverImageView.setOnClickListener {
             if (!song.trackId.startsWith("spotify:")) return@setOnClickListener
             com.niki.spotify.remote.PlayerApi.play(com.niki.spotify.remote.createListItem(song.trackId))
             dismiss()

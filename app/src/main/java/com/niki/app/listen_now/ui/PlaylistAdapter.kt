@@ -2,15 +2,15 @@ package com.niki.app.listen_now.ui
 
 import android.view.View
 import androidx.core.view.marginEnd
-import com.niki.app.databinding.ItemPlaylistBinding
-import com.niki.app.interfaces.OnClickListener
 import com.niki.app.ContentType
 import com.niki.app.ListItemCallback
+import com.niki.app.databinding.ItemPlaylistBinding
+import com.niki.app.interfaces.OnClickListener
+import com.niki.app.parseSpotifyId
+import com.niki.app.runOnMain
 import com.niki.app.util.SongRepository
 import com.niki.app.util.SpotifyChildrenLoader
 import com.niki.app.util.loadLargeImage
-import com.niki.app.parseSpotifyId
-import com.niki.app.runOnMain
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.getRootWidth
@@ -60,7 +60,7 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
         val w = (root.context.getRootWidth() * WIDTH_PERCENT).toInt()
 
         root.setSize(width = w)
-        cover.setSize(w)
+        coverImageView.setSize(w)
 
         if (position == 0) {
             root.setMargins(start = root.marginEnd * 2)
@@ -71,7 +71,7 @@ class PlaylistAdapter : ViewBindingListAdapter<ItemPlaylistBinding, ListItem>(Li
         data.imageUri.raw?.let {
             loadLargeImage(it) { bitmap ->
                 val radius = if (type == ContentType.ARTIST) Int.MAX_VALUE else RADIUS
-                root.context.loadRadiusBitmap(bitmap, cover, radius)
+                root.context.loadRadiusBitmap(bitmap, coverImageView, radius)
             }
         }
 
