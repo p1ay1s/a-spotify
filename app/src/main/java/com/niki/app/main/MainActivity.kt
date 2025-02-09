@@ -40,9 +40,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.lang.ref.WeakReference
 
 @SuppressLint("SetTextI18n")
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
+    companion object {
+        var parentHeight: Int = 0
+        var parentWidth: Int = 0
+
+        var bottomNavHeight: Int = 0
+        var miniPlayerHeight: Int = 0
+        var hostViewHeight: Int = 0
+
+        var minCoverLength: Int = 0
+    }
 
     private val playerBehavior
         get() = BottomSheetBehavior.from(binding.player)
@@ -50,7 +61,6 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     private val mainViewModel by lazy { ViewModelProvider(this)[MainViewModel::class.java] }
 
     private lateinit var authManager: SpotifyAuthManager
-    private lateinit var sizeManager: MainActivitySizeManager
 
     private lateinit var bottomSheetCallbackImpl: BottomSheetCallbackImpl // 需要用同一监听器来取消监听
 
@@ -58,13 +68,13 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             useFullScreen()
 
+        App.mainActivity = WeakReference(this@MainActivity)
         App.loadingDialog = LoadingDialog(this@MainActivity)
 
         playerApi = PlayerApi
         lifecycleOwner = this@MainActivity
 
-        sizeManager = MainActivitySizeManager(this@MainActivity)
-        sizeManager.setSizes(binding)
+        MainActivitySizeManager.setSizes(binding)
 
         authManager = SpotifyAuthManager(this@MainActivity)
         authManager.setCallback { result -> // spotify 授权完成后的回调
@@ -104,7 +114,6 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             true
         }
 
-
         connectButton.setOnClickListener {
             authManager.authenticate()
         }
@@ -114,10 +123,9 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         playerBehavior.apply {
             isHideable = false
             state = BottomSheetBehavior.STATE_COLLAPSED
-            peekHeight = sizeManager.bottomNavHeight + sizeManager.miniPlayerRootHeight
+            peekHeight = bottomNavHeight + miniPlayerHeight
             addBottomSheetCallback(bottomSheetCallbackImpl)
             bottomSheetCallbackImpl.onSlide(player, 0.0F) // 手动复位
-
         }
 
         player.setOnClickListener {
@@ -136,7 +144,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         PlayerApi.coverUrl.observe(this@MainActivity) {
             loadLargeImage(it) { bitmap ->
                 if (playerBehavior.state == BottomSheetBehavior.STATE_COLLAPSED)
-                    adjustCover(0F) // 让图片立即复位
+                    adjustCoverByOffset(0F) // 让图片立即复位
 
                 loadRadiusBitmap(bitmap, coverImageView, COVER_RADIUS)
                 toBlurDrawable(bitmap) { blurDrawable ->
@@ -152,7 +160,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         PlayerApi.isPaused.observe(this@MainActivity) { isPaused -> // 暂停图片切换
             val res = if (isPaused) R.drawable.ic_play else R.drawable.ic_pause
             playButton.setImageResource(res)
-            miniPlayButton.setImageResource(res)
+            miniPlayerRoot.binding.miniPlayButton.setImageResource(res)
         }
 
         PlayerApi.isLoading.observe(this@MainActivity) { // seekbar 加载中
@@ -181,7 +189,6 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     override fun onDestroy() {
         authManager.release()
-        sizeManager.activity = null
         playerBehavior.removeBottomSheetCallback(bottomSheetCallbackImpl)
         binding.seekbar.setOnSeekBarChangeListener(null)
         super.onDestroy()
@@ -207,19 +214,40 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     }
 
     /**
+     * 调整 bottom nav, line 和 connect button 的 TranslationY
+     */
+    private fun adjustTranslationYs(slideOffset: Float) = binding.run {
+        if (slideOffset !in 0.0F..1.0F)
+            return
+
+        // 这些参数的计算只要画个图 (slide offset 关于 translation 的图像) 即可得出
+        val navY = bottomNavHeight * slideOffset * 2 // 导航栏的偏移量
+        val connectButtonY = parentHeight * -(0.8F * slideOffset + 0.23F) // 大概让按钮跟随 behavior 移动
+
+        bottomNavigation.translationY = navY
+        line.translationY = navY
+        connectButton.translationY = connectButtonY
+    }
+
+    /**
+     * 调整 cover 的大小和位置
+     *
      * 用一个 [0, 1] 区间内的数设置 cover 的大小及位置
      *
      * pivot 计算原理: 以 cover 左上角为原点, 求完全缩小和原始尺寸的 cover 的右上角、左下角坐标的交点即为 pivot 点
      */
-    private fun adjustCover(slideOffset: Float) = binding.coverImageView.run {
+    private fun adjustCoverByOffset(slideOffset: Float) = binding.coverImageView.run {
+        if (slideOffset !in 0.0F..1.0F)
+            return@run
+
         val coverHeight = height // cover 的宽高
         if (coverHeight == 0) return@run // 若未加载出图片则返回
 
         val minTopMargin =
-            (sizeManager.miniPlayerRootHeight - sizeManager.minCoverHeight) / 2F  // 最小化 cover 的顶部 margin
-        val minLeftMargin = 0.1F * sizeManager.miniPlayerRootHeight // 左边 margin
+            (miniPlayerHeight - minCoverLength) / 2F  // 最小化 cover 的顶部 margin
+        val minLeftMargin = 0.1F * miniPlayerHeight // 左边 margin
 
-        val minScale = sizeManager.minCoverHeight.toFloat() / coverHeight // 使封面宽高到达最小的 scale 因子
+        val minScale = minCoverLength.toFloat() / coverHeight // 使封面宽高到达最小的 scale 因子
 
         // (1 - t) * C + t * A 当 slide offset 约为 0 时结果为 minScale, 约为 1 时结果也为 1, 作用是限定 cover 的尺寸
         // 也可以使用其他非线性的公式, 会更灵动
@@ -310,14 +338,9 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
         override fun onStateChanged(bottomSheet: View, newState: Int) {
             binding.apply {
-                when (newState) {
-                    BottomSheetBehavior.STATE_COLLAPSED -> {
-                        adjustCover(0.0F)
-                        miniPlayerRoot.visibility = View.VISIBLE
-                    }
-
-                    else ->
-                        miniPlayerRoot.visibility = View.INVISIBLE
+                if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
+                    adjustCoverByOffset(0.0F)
+                    miniPlayerRoot.visibility = View.VISIBLE
                 }
             }
         }
@@ -328,21 +351,17 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
          * 此处 slideOffset 完全可以当作一个百分数来看待
          */
         override fun onSlide(bottomSheet: View, slideOffset: Float) {
-            if (slideOffset in 0.0F..1.0F) {
-                binding.run {
-                    shadeForMiniPlayer.alpha = 1 - slideOffset * 15 // 使遮罩逐渐消失, 让背景显现
-                    val navY = sizeManager.bottomNavHeight * slideOffset * 2 // 导航栏的偏移量
-                    val connectButtonY =
-                        sizeManager.parentHeight * -(0.8F * slideOffset + 0.23F) // 大概让按钮跟随 behavior 移动
+            if (slideOffset !in 0.0F..1.0F)
+                return
 
-                    bottomNavigation.translationY = navY
-                    line.translationY = navY
+            if (slideOffset in 0.0F..0.005F) // 小播放器可见性
+                binding.miniPlayerRoot.visibility = View.VISIBLE
+            else
+                binding.miniPlayerRoot.visibility = View.INVISIBLE
 
-                    connectButton.translationY = connectButtonY
-                }
-            }
-
-            adjustCover(slideOffset)
+            binding.shadeForMiniPlayer.alpha = 1 - slideOffset * 15 // 使遮罩逐渐消失, 让背景显现
+            adjustTranslationYs(slideOffset)
+            adjustCoverByOffset(slideOffset)
         }
     }
 

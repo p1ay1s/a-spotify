@@ -11,7 +11,4 @@
     <declare-styleable name="LoadingSeekbar">
         <attr name="sizeToPercentOfWidth" />
     </declare-styleable>
-    <declare-styleable name="MiniPlayerView">
-        <attr name="sizeToPercentOfWidth" />
-    </declare-styleable>
 </resources>

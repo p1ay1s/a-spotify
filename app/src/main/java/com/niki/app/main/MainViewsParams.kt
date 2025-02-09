@@ -8,6 +8,7 @@ const val SEEKBAR_MAX = SEEKBAR_SCALE * 17
 
 const val BOTTOM_NAV_WEIGHT = 0.115
 const val MINI_PLAYER_WEIGHT = 0.08
+const val HOST_VIEW_WEIGHT = 1 - BOTTOM_NAV_WEIGHT - MINI_PLAYER_WEIGHT
 
 const val MINI_COVER_SIZE = 0.8F // 占 mini player 高度的百分比
 

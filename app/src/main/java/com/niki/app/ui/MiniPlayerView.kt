@@ -5,8 +5,9 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.niki.app.databinding.LayoutMiniPlayerBinding
-import com.zephyr.base.extension.getRootHeight
+import com.niki.spotify.remote.PlayerApi
 import com.zephyr.base.extension.getRootWidth
 
 class MiniPlayerView @JvmOverloads constructor(
@@ -15,23 +16,24 @@ class MiniPlayerView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
     companion object {
-        private const val MINI_COVER_SIZE = 0.8F // 占 mini player 大小的百分比, 用于计算 root 的宽度
-
+        private const val COVER_TOKEN_SIZE = 0.95F // 占 mini player 大小的百分比, 用于计算 root 的宽度
     }
 
+    private val layoutInflater = LayoutInflater.from(context)
+    val binding = LayoutMiniPlayerBinding.inflate(layoutInflater, this, true)
+
     init {
-        val layoutInflater = LayoutInflater.from(context)
-        val binding = LayoutMiniPlayerBinding.inflate(layoutInflater)
+        post {
+            val w = context.getRootWidth()
 
-        val w = context.getRootWidth()
-        val h = context.getRootHeight()
+            val placeholderLength = (height * COVER_TOKEN_SIZE).toInt()
+            val rootWidth = w - placeholderLength
 
-        val miniCoverLength = (h * MINI_COVER_SIZE).toInt()
-        val rootWidth = w - miniCoverLength
-        binding.root.post {
-            binding.root.updateLayoutParams {
+            binding.playerApi = PlayerApi
+            binding.lifecycleOwner = this.findViewTreeLifecycleOwner()
+
+            updateLayoutParams {
                 width = rootWidth
-                height = miniCoverLength
             }
         }
     }

@@ -10,14 +10,10 @@
             type="com.niki.spotify.remote.PlayerApi" />
     </data>
 
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/mini_player_root"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.08"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent">
 
         <com.niki.app.ui.ScrollTextView
             android:id="@+id/mini_track_name"
@@ -41,7 +37,7 @@
             android:layout_height="100dp"
             android:clickable="true"
             android:onClick="@{() -> playerApi.switchState()}"
-            android:padding="4dp"
+            android:padding="3dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_play"
             app:layout_constraintBottom_toBottomOf="parent"

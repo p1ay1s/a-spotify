@@ -8,6 +8,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.niki.app.main.MainActivity
 import com.niki.app.ui.LoadingDialog
 import com.niki.app.util.cache_pool.BitmapCachePool
 import com.niki.app.util.cache_pool.ListItemCachePool
@@ -18,9 +19,13 @@ import com.zephyr.base.log.Logger
 import com.zephyr.base.log.VERBOSE
 import com.zephyr.base.log.logE
 import kotlinx.coroutines.runBlocking
+import java.lang.ref.WeakReference
 
 class App : Application() {
     companion object {
+
+        lateinit var mainActivity: WeakReference<MainActivity>
+
         @Volatile
         var accessToken = ""
             set(value) {
