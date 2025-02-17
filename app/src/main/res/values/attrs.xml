@@ -2,7 +2,7 @@
 <resources>
     <attr name="sizeToPercentOfWidth" format="float" />
 
-    <declare-styleable name="RButton">
+    <declare-styleable name="SquareRippleButton">
         <attr name="sizeToPercentOfWidth" />
     </declare-styleable>
     <declare-styleable name="SquareImageView">

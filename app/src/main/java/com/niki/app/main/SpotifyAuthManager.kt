@@ -4,7 +4,7 @@ import android.content.Intent
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import com.niki.app.App
 import com.niki.spotify.remote.logS
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
@@ -13,7 +13,10 @@ import com.spotify.sdk.android.auth.AuthorizationResponse
 /**
  * 管理主活动向 spotify 请求连接的事务
  */
-class SpotifyAuthManager(private var activity: AppCompatActivity?) {
+class SpotifyAuthManager {
+    private val activity: MainActivity?
+        get() = App.mainActivity.get()
+
     private var isWorking = false
     private var authCallback: ((ActivityResult) -> Unit)? = null
     private var launcher: ActivityResultLauncher<Intent>? = null
@@ -45,7 +48,7 @@ class SpotifyAuthManager(private var activity: AppCompatActivity?) {
 //        "soa-create-partner"
     )
 
-    init {
+    fun initLauncher() {
         try {
             launcher = activity?.registerForActivityResult(
                 ActivityResultContracts.StartActivityForResult()
@@ -69,7 +72,6 @@ class SpotifyAuthManager(private var activity: AppCompatActivity?) {
     fun release() {
         launcher = null
         authCallback = null
-        activity = null
         isWorking = false
     }
 

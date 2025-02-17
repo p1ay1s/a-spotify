@@ -1,10 +1,10 @@
 package com.niki.app.song.ui
 
 import android.view.View
-import com.niki.app.databinding.ItemSongBinding
-import com.niki.app.interfaces.OnClickListener
 import com.niki.app.ContentType
 import com.niki.app.ListItemCallback
+import com.niki.app.databinding.ItemSongBinding
+import com.niki.app.interfaces.OnClickListener
 import com.niki.app.util.loadSmallImage
 import com.niki.util.loadRadiusBitmap
 import com.spotify.protocol.types.ListItem
@@ -16,12 +16,13 @@ import com.zephyr.vbclass.ui.ViewBindingListAdapter
 class SongAdapter(private val type: ContentType) :
     ViewBindingListAdapter<ItemSongBinding, ListItem>(ListItemCallback()) {
 
-    companion object {
-        private const val MARGIN_TOP_PERCENT = 0.05
-    }
-
     lateinit var parentItem: ListItem
     private var listener: OnClickListener? = null
+    var firstItemMarginTop = 0
+//        set(value) {
+//            field = value
+//            notifyItemChanged(0)
+//        }
 
     fun setOnClickListener(l: OnClickListener?) {
         listener = l
@@ -35,10 +36,8 @@ class SongAdapter(private val type: ContentType) :
             root.visibility = View.VISIBLE
         }
 
-        val h = (root.context.getRootHeight() * MARGIN_TOP_PERCENT).toInt()
-
         if (position == 0)
-            root.setMargins(top = 2 * h)
+            root.setMargins(top = firstItemMarginTop)
         else
             root.setMargins(top = 0)
 

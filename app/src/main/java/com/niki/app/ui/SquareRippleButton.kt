@@ -7,7 +7,7 @@ import com.zephyr.base.extension.getRootWidth
 import com.zephyr.base.extension.setSize
 import com.zephyr.base.ui.RippleButton
 
-class RButton @JvmOverloads constructor(
+class SquareRippleButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -15,8 +15,8 @@ class RButton @JvmOverloads constructor(
     private var sizePercent: Float = 0f
 
     init {
-        context.obtainStyledAttributes(attrs, R.styleable.RButton).run {
-            sizePercent = getFloat(R.styleable.RButton_sizeToPercentOfWidth, 0f)
+        context.obtainStyledAttributes(attrs, R.styleable.SquareRippleButton).run {
+            sizePercent = getFloat(R.styleable.SquareRippleButton_sizeToPercentOfWidth, 0f)
             recycle()
         }
     }

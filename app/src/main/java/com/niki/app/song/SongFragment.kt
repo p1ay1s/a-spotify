@@ -1,29 +1,35 @@
 package com.niki.app.song
 
 import android.widget.LinearLayout
+import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.niki.app.App
 import com.niki.app.ContentType
 import com.niki.app.PRE_LOAD_NUM
-import com.niki.app.databinding.FragmentListItemBinding
+import com.niki.app.databinding.FragmentSongBinding
 import com.niki.app.interfaces.OnClickListener
+import com.niki.app.main.MainActivity
 import com.niki.app.openNewFragment
 import com.niki.app.parseSpotifyId
 import com.niki.app.showItemInfoDialog
 import com.niki.app.song.SongFragment.Companion.ERROR_MSG
 import com.niki.app.song.ui.SongAdapter
 import com.niki.app.toastM
+import com.niki.app.ui.ScrollTextView
 import com.niki.app.util.SongRepository
 import com.niki.app.util.loadLargeImage
+import com.niki.spotify.remote.PlayerApi.playItemAtIndex
 import com.niki.util.toBlurDrawable
 import com.spotify.protocol.types.ListItem
 import com.zephyr.base.extension.addLineDecoration
 import com.zephyr.base.extension.addOnLoadMoreListener_V
+import com.zephyr.base.extension.setMargins
 import com.zephyr.base.ui.PreloadLayoutManager
 import com.zephyr.vbclass.ViewBindingFragment
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val songFragmentLock = Any()
@@ -33,7 +39,11 @@ fun Fragment.openSongFragment(item: ListItem, callback: (Boolean) -> Unit) =
     synchronized(songFragmentLock) {
         if (isOpening) return@synchronized
         isOpening = true
-        App.loadingDialog?.show()
+        lifecycleScope.launch(Dispatchers.Main) {
+            delay(800) // 如果很快响应就不显示
+            if (isOpening)
+                App.loadingDialog?.show()
+        }
         val songFragment = SongFragment()
         songFragment.let {
             it.setListItem(item)
@@ -57,7 +67,7 @@ fun Fragment.openSongFragment(item: ListItem, callback: (Boolean) -> Unit) =
         }
     }
 
-class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
+class SongFragment : ViewBindingFragment<FragmentSongBinding>() {
 
     companion object {
         const val ERROR_MSG = "获取不到数据, 不打开 SongFragment"
@@ -93,18 +103,36 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
         }
     }
 
-    override fun FragmentListItemBinding.initBinding() {
+    override fun FragmentSongBinding.initBinding() {
+        songAdapter = SongAdapter(item.id.parseSpotifyId())
+
+        bar.apply {
+            getTextView().apply {
+                text = item.title + " - " + item.subtitle
+//                speed = 20
+//                speed = ScrollSpeed.left(300F)
+                mode = ScrollTextView.ScrollMode.BOUNCE
+            }
+            getButton().setOnClickListener {
+                App.mainActivity.get()?.popFragment()
+            }
+            doOnLayout {
+                if (MainActivity.isEnableEdgeToEdge) {
+                    bar.setMargins(top = MainActivity.statusBarHeight)
+                    songAdapter.firstItemMarginTop = bar.height + MainActivity.statusBarHeight
+                }
+            }
+        }
+
         if (repository.list.value.isNullOrEmpty())
             repository.loadData { }
 
-        if (item.id.parseSpotifyId() == ContentType.ALBUM) // TODO 暂时对专辑使用模糊背景
+        if (item.id.parseSpotifyId() == ContentType.ALBUM)
             loadLargeImage(item.imageUri.raw!!) { bitmap ->
                 requireActivity().toBlurDrawable(bitmap) {
-                    root.background = it
+                    bar.background = it
                 }
             }
-
-        songAdapter = SongAdapter(item.id.parseSpotifyId())
 
         songAdapter.apply {
             parentItem = item
@@ -116,7 +144,7 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
                             openSongFragment(clickedItem) { success ->
                                 if (!success) {
                                     toastM("未知错误")
-                                    com.niki.spotify.remote.PlayerApi.playItemAtIndex(
+                                    playItemAtIndex(
                                         item, // 此 item 应为歌单列表 item
                                         position
                                     )
@@ -124,7 +152,7 @@ class SongFragment : ViewBindingFragment<FragmentListItemBinding>() {
                             }
 
                         clickedItem.playable -> {
-                            com.niki.spotify.remote.PlayerApi.playItemAtIndex(
+                            playItemAtIndex(
                                 item, // 此 item 应为歌单列表 item
                                 position
                             )

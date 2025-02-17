@@ -26,6 +26,9 @@ class LoadingSeekbar @JvmOverloads constructor(
 ) : AppCompatSeekBar(context, attrs, defStyleAttr) {
 
     companion object {
+        private const val SEEKBAR_SCALE = 15.0 // 进度条的细腻程度, 越大越细腻
+        const val SEEKBAR_MAX = (SEEKBAR_SCALE * 17).toInt()
+
         private const val ANIM_DURATION = 700L
         private const val ROTATION_SENSE = 40L
 
@@ -63,6 +66,7 @@ class LoadingSeekbar @JvmOverloads constructor(
             recycle()
         }
 
+        post { max = SEEKBAR_MAX }
         originalDrawable = progressDrawable.copy()
 
         loadingAnimator = ValueAnimator.ofFloat(0f, 1f).apply {

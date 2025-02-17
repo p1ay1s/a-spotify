@@ -31,7 +31,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintWidth_percent="0.7" />
 
-        <com.niki.app.ui.RButton
+        <com.niki.app.ui.SquareRippleButton
             android:id="@+id/mini_play_button"
             android:layout_width="100dp"
             android:layout_height="100dp"
@@ -47,7 +47,7 @@
             app:sizeToPercentOfWidth="0.115"
             app:tint="@color/contrast" />
 
-        <com.niki.app.ui.RButton
+        <com.niki.app.ui.SquareRippleButton
             android:id="@+id/mini_next_button"
             android:layout_width="100dp"
             android:layout_height="100dp"

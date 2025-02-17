@@ -3,6 +3,11 @@
   <component name="WizardSettings">
     <option name="children">
       <map>
+        <entry key="imageWizard">
+          <value>
+            <PersistentState />
+          </value>
+        </entry>
         <entry key="vectorWizard">
           <value>
             <PersistentState>
@@ -14,8 +19,8 @@
                         <option name="values">
                           <map>
                             <entry key="assetSourceType" value="FILE" />
-                            <entry key="outputName" value="image__4_" />
-                            <entry key="sourceFile" value="D:\EdgeDownloads\image (4).svg" />
+                            <entry key="outputName" value="ic_check" />
+                            <entry key="sourceFile" value="D:\A_code\Android\myRoot\mine\Spotify\app\src\main\res\drawable\LetsIconsCheckRing.svg" />
                           </map>
                         </option>
                       </PersistentState>

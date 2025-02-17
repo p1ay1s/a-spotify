@@ -162,7 +162,7 @@
                 app:layout_constraintHeight_percent="0.03"
                 app:layout_constraintTop_toBottomOf="@id/seekbar" />
 
-            <com.niki.app.ui.RButton
+            <com.niki.app.ui.SquareRippleButton
                 android:id="@+id/previous_button"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
@@ -174,7 +174,7 @@
                 app:sizeToPercentOfWidth="0.17"
                 app:tint="@color/white_transparent" />
 
-            <com.niki.app.ui.RButton
+            <com.niki.app.ui.SquareRippleButton
                 android:id="@+id/play_button"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
@@ -186,7 +186,7 @@
                 app:sizeToPercentOfWidth="0.17"
                 app:tint="@color/white_transparent" />
 
-            <com.niki.app.ui.RButton
+            <com.niki.app.ui.SquareRippleButton
                 android:id="@+id/next_button"
                 android:layout_width="100dp"
                 android:layout_height="100dp"

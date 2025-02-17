@@ -1,7 +1,7 @@
 package com.niki.app.util
 
 import android.graphics.Bitmap
-import com.niki.app.main.SEEKBAR_MAX
+import com.niki.app.ui.LoadingSeekbar.Companion.SEEKBAR_MAX
 import com.niki.app.util.cache_pool.BitmapCachePool
 import com.niki.app.util.cache_pool.LowBitmapCachePool
 import com.niki.spotify.remote.ImageApi

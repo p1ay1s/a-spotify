@@ -5,6 +5,10 @@ import androidx.annotation.RequiresApi
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.niki.app.App
 import com.niki.app.databinding.ActivityMainBinding
+import com.niki.app.main.MainActivity.Companion.BOTTOM_NAV_WEIGHT
+import com.niki.app.main.MainActivity.Companion.HOST_VIEW_WEIGHT
+import com.niki.app.main.MainActivity.Companion.MINI_COVER_SIZE
+import com.niki.app.main.MainActivity.Companion.MINI_PLAYER_WEIGHT
 import com.niki.app.main.MainActivity.Companion.bottomNavHeight
 import com.niki.app.main.MainActivity.Companion.hostViewHeight
 import com.niki.app.main.MainActivity.Companion.minCoverLength
@@ -19,23 +23,26 @@ import com.zephyr.base.extension.setMargins
 import com.zephyr.base.extension.setSize
 
 @RequiresApi(Build.VERSION_CODES.R)
-object MainActivitySizeManager {
+object MainActivityParamsManager {
 
     /**
      * 由于根部局为 CoordinatorLayout 许多 view 的大小难以在 xml 中设置所以统一用代码实现
      */
-    fun setSizes(binding: ActivityMainBinding) = binding.run {
+    fun setLayoutParams(binding: ActivityMainBinding, onComplete: (() -> Unit) = {}) = binding.run {
         root.post {
             val activity = App.mainActivity.get() ?: return@post
 
-            val h = activity.getRootHeight() // window 高度
-            val s = activity.calculateStatusBarHeight() // 状态栏高度
-            val n = activity.calculateNavigationBarHeight() // 底部导航栏高度
+            val winHeight = activity.getRootHeight() // window 高度
+            val statusBarHeight = activity.calculateStatusBarHeight() // 状态栏高度
+            val navigationBarHeight = activity.calculateNavigationBarHeight() // 底部导航栏高度
 
+            MainActivity.statusBarHeight = statusBarHeight
+            MainActivity.navigationBarHeight = navigationBarHeight
             parentHeight = if (MainActivity.isEnableEdgeToEdge) // 在启用了 edge to edge 后这样才能正确获取屏幕高度
-                h + s + n
+                winHeight + statusBarHeight + navigationBarHeight
             else
-                h
+                winHeight
+
             parentWidth = root.context.getRootWidth()
 
             bottomNavHeight = (parentHeight * BOTTOM_NAV_WEIGHT).toInt()
@@ -55,6 +62,7 @@ object MainActivitySizeManager {
 
             line.setMargins(bottom = bottomNavHeight)
             connectButton.setMargins(end = (0.08 * parentWidth).toInt())
+            onComplete()
         }
     }
 }

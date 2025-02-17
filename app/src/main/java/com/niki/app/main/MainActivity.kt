@@ -22,6 +22,7 @@ import com.niki.app.listen_now.ListenNowFragment
 import com.niki.app.search.SearchFragment
 import com.niki.app.showMDDialog
 import com.niki.app.ui.LoadingDialog
+import com.niki.app.ui.LoadingSeekbar.Companion.SEEKBAR_MAX
 import com.niki.app.util.FragmentTags
 import com.niki.app.util.getSeekBarProgress
 import com.niki.app.util.loadLargeImage
@@ -38,23 +39,38 @@ import com.zephyr.base.extension.toast
 import com.zephyr.base.log.logE
 import com.zephyr.vbclass.ViewBindingActivity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
 @SuppressLint("SetTextI18n")
-@RequiresApi(Build.VERSION_CODES.R)
 class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
     companion object {
-        var parentHeight: Int = 0
-        var parentWidth: Int = 0
+        const val COVER_RADIUS = 20
 
-        var bottomNavHeight: Int = 0
-        var miniPlayerHeight: Int = 0
-        var hostViewHeight: Int = 0
+        const val BOTTOM_NAV_WEIGHT = 0.115
+        const val MINI_PLAYER_WEIGHT = 0.08
+        const val HOST_VIEW_WEIGHT = 1 - BOTTOM_NAV_WEIGHT - MINI_PLAYER_WEIGHT
 
-        var minCoverLength: Int = 0
+        const val MINI_COVER_SIZE = 0.8F // 占 mini player 高度的百分比
+
+        const val COVER_SCALE_K = -1.3F
+
+        const val TWO_PRESSES_TO_EXIT_APP_TIME = 3000
+
+        var statusBarHeight = 0
+        var navigationBarHeight = 0
+
+        var parentHeight = 0
+        var parentWidth = 0
+
+        var bottomNavHeight = 0
+        var miniPlayerHeight = 0
+        var hostViewHeight = 0
+
+        var minCoverLength = 0
 
         var isEnableEdgeToEdge = false
     }
@@ -68,6 +84,9 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
 
     private lateinit var bottomSheetCallbackImpl: BottomSheetCallbackImpl // 需要用同一监听器来取消监听
 
+    private var seekbarJob: Job? = null
+
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun ActivityMainBinding.initBinding() {
         isEnableEdgeToEdge = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
@@ -79,27 +98,68 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         playerApi = PlayerApi
         lifecycleOwner = this@MainActivity
 
-        MainActivitySizeManager.setSizes(binding)
+        bottomSheetCallbackImpl = BottomSheetCallbackImpl()
 
-        authManager = SpotifyAuthManager(this@MainActivity)
-        authManager.setCallback { result -> // spotify 授权完成后的回调
-            val response = AuthorizationClient.getResponse(result.resultCode, result.data)
-            response.run {
-                when (type) {
-                    AuthorizationResponse.Type.CODE
-                    -> AppTokenHelper.sendIntent(TokenIntent.GetWithCode(code))
+        MainActivityParamsManager.setLayoutParams(binding) {
+            bottomSheetCallbackImpl.onSlide(player, 0.0F) // 手动复位
+        }
 
-                    AuthorizationResponse.Type.TOKEN -> {}
+        authManager = SpotifyAuthManager().apply {
+            initLauncher()
+            setCallback { result -> // spotify 授权完成后的回调
+                val response = AuthorizationClient.getResponse(result.resultCode, result.data)
+                response.run {
+                    when (type) {
+                        AuthorizationResponse.Type.CODE
+                        -> AppTokenHelper.sendIntent(TokenIntent.GetWithCode(code))
 
-                    else -> "授权失败: ${type.name}".toast()
+                        AuthorizationResponse.Type.TOKEN -> {}
+
+                        else -> "授权失败: ${type.name}".toast()
+                    }
                 }
             }
         }
 
         seekbar.setOnSeekBarChangeListener(OnSeekListenerImpl())
-        seekbar.max = SEEKBAR_MAX.toInt()
 
-        hostView.apply {
+        initFragments()
+
+        bottomNavigation.setOnItemSelectedListener { item ->
+            hostView.switchHost(item.itemId, R.anim.fade_in, R.anim.fade_out)
+            true
+        }
+
+        connectButton.setOnClickListener {
+            authManager.authenticate()
+        }
+
+        playerBehavior.apply {
+            isHideable = false
+            state = BottomSheetBehavior.STATE_COLLAPSED
+            addBottomSheetCallback(bottomSheetCallbackImpl)
+        }
+
+        player.setOnClickListener {
+            if (playerBehavior.state != BottomSheetBehavior.STATE_EXPANDED)
+                playerBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+
+        startSeekbarStateCheckJob()
+
+        registerObservers()
+    }
+
+    override fun onDestroy() {
+        seekbarJob?.cancel()
+        authManager.release()
+        playerBehavior.removeBottomSheetCallback(bottomSheetCallbackImpl)
+        binding.seekbar.setOnSeekBarChangeListener(null)
+        super.onDestroy()
+    }
+
+    private fun initFragments() {
+        binding.hostView.apply {
             fragmentManager = supportFragmentManager
             addHost(R.id.index_me)
             addHost(
@@ -113,32 +173,12 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 ListenNowFragment()
             )
         }
+    }
 
-        bottomNavigation.setOnItemSelectedListener { item ->
-            hostView.switchHost(item.itemId, R.anim.fade_in, R.anim.fade_out)
-            true
-        }
-
-        connectButton.setOnClickListener {
-            authManager.authenticate()
-        }
-
-        bottomSheetCallbackImpl = BottomSheetCallbackImpl()
-
-        playerBehavior.apply {
-            isHideable = false
-            state = BottomSheetBehavior.STATE_COLLAPSED
-            addBottomSheetCallback(bottomSheetCallbackImpl)
-            bottomSheetCallbackImpl.onSlide(player, 0.0F) // 手动复位
-        }
-
-        player.setOnClickListener {
-            if (playerBehavior.state != BottomSheetBehavior.STATE_EXPANDED)
-                playerBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-        }
-
-        startSeekbarStateCheckJob()
-
+    /**
+     * 注册所有观察者
+     */
+    private fun registerObservers() = binding.apply {
         RemoteManager.isConnected.observe(this@MainActivity) {
             if (it)
                 PlayerApi.startListen()
@@ -184,22 +224,16 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
                 it.isAvailable // 细化观察的属性
             }.collect { v ->
                 if (v) {
-                    "web-api ok".toast()
-                    mainViewModel.test()
+//                    "web-api ok".toast()
+//                    mainViewModel.test()
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        authManager.release()
-        playerBehavior.removeBottomSheetCallback(bottomSheetCallbackImpl)
-        binding.seekbar.setOnSeekBarChangeListener(null)
-        super.onDestroy()
-    }
-
     private fun startSeekbarStateCheckJob() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        seekbarJob?.cancel()
+        seekbarJob = lifecycleScope.launch(Dispatchers.IO) {
             while (true) {
                 if (mainViewModel.allowAutoSetProgress) {
                     val progress = getSeekBarProgress()
@@ -308,6 +342,11 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
             return
         }
 
+        popFragment()
+    }
+
+    fun popFragment() {
+        val pair = binding.hostView.getActiveHost()?.peek() ?: return
         when (pair.first) {
             FragmentTags.LISTEN_NOW -> twoClicksToExit()
 
@@ -386,7 +425,7 @@ class MainActivity : ViewBindingActivity<ActivityMainBinding>() {
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
             PlayerApi.run {
                 val percent = mainViewModel.notedProgress / SEEKBAR_MAX
-                val time = (percent * duration.value!!).toLong()
+                val time = (percent * duration.value!!)
                 seekTo(time)
                 lifecycleScope.launch {
                     delay(170)
